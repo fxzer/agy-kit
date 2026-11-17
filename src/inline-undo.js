@@ -72,6 +72,7 @@
       const state={
         button,target,bubble,contentEl,hosts,editorBox,
         draftText:target.text||'',
+        conversationOnly:!!target.state?.conversationOnly,
         preview:target.state?.conversationOnly?[]:null,previewError:'',previewLoaded:!target.state?.conversationOnly
       };
       this.editing=state;
@@ -158,26 +159,29 @@
       if(!metaEl)return;
       const current=native.resolve(button)||state.target;
       const st=current.state;
-      const loading=state.preview===null&&!state.previewError;
-      const fileText=loading?'检查变更…'
+      const conversationOnly=state.conversationOnly!==undefined?state.conversationOnly:!!st.conversationOnly;
+      const loading=!conversationOnly&&state.preview===null&&!state.previewError;
+      const fileText=conversationOnly?'保留文件'
+        :loading?'检查变更…'
         :state.previewError?'预览失败'
-        :st.conversationOnly?'保留文件'
         :state.preview?.length?`还原 ${state.preview.length} 文件`
         :'无文件变更';
       const hasAttachmentHint=!!(state.bubble?.querySelector?.('.agy-user-bubble-header, img, [data-testid*="attachment"]'));
       metaEl.innerHTML=`
-        ${st.conversationOnlyRevertEnabled?`<label class="agy-inline-switch"><span>撤回文件</span><button type="button" role="switch" aria-label="同时撤回文件更改" aria-checked="${!st.conversationOnly}" style="background:${st.conversationOnly?'var(--secondary,rgba(120,120,128,.2))':'var(--primary,var(--cta,#007acc))'}"><span style="left:${st.conversationOnly?2:14}px"></span></button></label>`:''}
+        ${st.conversationOnlyRevertEnabled?`<label class="agy-inline-switch"><span>撤回文件</span><button type="button" role="switch" aria-label="同时撤回文件更改" aria-checked="${!conversationOnly}" style="background:${conversationOnly?'var(--secondary,rgba(120,120,128,.2))':'var(--primary,var(--cta,#007acc))'}"><span style="left:${conversationOnly?2:14}px"></span></button></label>`:''}
         <span style="opacity:.75">${esc(fileText)}</span>
         ${hasAttachmentHint?'<span style="opacity:.7" title="发送时会自动保留原消息附件；如需增删附件请点「回底部」">· 保留原附件</span>':''}
       `;
       if(filesEl){
-        filesEl.innerHTML=!loading&&!state.previewError&&state.preview?.length&&!st.conversationOnly
+        filesEl.innerHTML=!loading&&!state.previewError&&state.preview?.length&&!conversationOnly
           ?`<details><summary>涉及 ${state.preview.length} 个文件</summary>${state.preview.map(p=>`<div>${esc(String(p.fileUri||p.uri||'文件').split('/').pop())}</div>`).join('')}</details>`:'';
       }
       metaEl.querySelector('[role=switch]')?.addEventListener('click',()=>{
         const cur=native.resolve(button)||state.target;
-        cur.state.setConversationOnly(!cur.state.conversationOnly);
-        if(!cur.state.conversationOnly&&!state.previewLoaded&&!state.previewError){
+        const next=!(state.conversationOnly??cur.state.conversationOnly);
+        state.conversationOnly=next;
+        cur.state.setConversationOnly(next);
+        if(!next&&!state.previewLoaded&&!state.previewError){
           state.preview=null;
           this.renderMeta(state);
           this.loadPreview(state);
@@ -189,7 +193,7 @@
     async applyRevert(shouldSubmit){
       const state=this.editing;
       if(!state||this.busy)return;
-      const current=native.resolve(state.button)||state.target;
+      let current=native.resolve(state.button)||state.target;
       if(!current)return;
       this.busy=true;
       const {editorBox}=state;
@@ -202,6 +206,11 @@
       const input=native.editor(current.context);
       const composer=input?.closest?.('[data-testid="agent-input-box"]')||null;
       try{
+        if(current.state?.conversationOnlyRevertEnabled&&state.conversationOnly!==undefined&&current.state.conversationOnly!==state.conversationOnly){
+          current.state.setConversationOnly(state.conversationOnly);
+          await new Promise(r=>setTimeout(r,30));
+          current=native.resolve(state.button)||current;
+        }
         await native.perform(current);
         if(!this.mounted||this.editing!==state)return;
         native.setText(current.context,state.draftText);

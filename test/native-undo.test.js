@@ -176,7 +176,7 @@ function createInlineEnv(){
   const feature=new window.__AGY_KIT_INLINE_UNDO__();
   feature.mount();
   return {
-    feature,revertButton,bubble,frame,maxBox,contentEl,bottomComposer,
+    feature,revertButton,bubble,frame,maxBox,contentEl,bottomComposer,target,
     getEditor:()=>appendedEditor,
     getStats:()=>({sendClicks,focusedBottom,scrolledBottom,performCalls,writtenText,submitted})
   };
@@ -230,11 +230,31 @@ test('点击回到底部编辑执行撤回并把修改文本写入底部输入�
 test('仅撤回会话时不预发预览请求，切换为撤回文件时才按需加载',async()=>{
   const env=createInlineEnv();
   let previewCalls=0;
-  const target={
-    session:'s1',index:1,text:'测试',
-    state:{conversationOnly:true,conversationOnlyRevertEnabled:true,setConversationOnly(v){this.conversationOnly=v;}},
-    context:{stepHandler:{async getRevertPreviews(){previewCalls++;return [{uri:'file:///a.js'}];}},inputBoxRef:{current:{}}}
+  let asyncVal=true;
+  const setCalls=[];
+  env.target.state={
+    get conversationOnly(){return asyncVal;},
+    conversationOnlyRevertEnabled:true,
+    setConversationOnly(v){setCalls.push(v);setTimeout(()=>{asyncVal=v;},15);}
   };
-  await env.feature.openInline(env.revertButton,target);
+  env.target.context.stepHandler={async getRevertPreviews(){previewCalls++;return [{uri:'file:///a.js'}];}};
+  await env.feature.openInline(env.revertButton,env.target);
   assert.equal(previewCalls,0);
+  const ed=env.getEditor();
+  const meta=ed.querySelector('[data-meta]');
+  assert.match(meta.innerHTML,/保留文件/);
+  // 模拟宿主异步更新 state：点击开关后应立即切换 UI 并触发按需预览，连点能来回切换
+  let clicked=null;
+  const origQuery=meta.querySelector.bind(meta);
+  const switchBtn={addEventListener(type,fn){if(type==='click')clicked=fn;}};
+  meta.querySelector=sel=>sel==='[role=switch]'?switchBtn:origQuery(sel);
+  env.feature.renderMeta(env.feature.editing);
+  clicked();
+  assert.equal(setCalls[0],false);
+  assert.equal(env.feature.editing.conversationOnly,false);
+  assert.equal(previewCalls,1);
+  clicked();
+  assert.equal(setCalls[1],true);
+  assert.equal(env.feature.editing.conversationOnly,true);
+  assert.match(meta.innerHTML,/保留文件/);
 });
