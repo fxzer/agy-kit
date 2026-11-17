@@ -4,9 +4,24 @@ Google Antigravity 2.x（macOS 桌面端）零依赖原生增强套件，集成�
 
 ## 插件效果
 
-### 实时上下文与配额 HUD
+### 实时监控与原地撤回编辑
 
-<img src="assets/hud-panel.png" alt="实时上下文与配额 HUD" width="420">
+<table>
+  <tr>
+    <td width="46%" align="center">
+      <img src="assets/hud-panel.png" alt="实时上下文与配额 HUD"><br>
+      <sub>实时 HUD：上下文构成、双环配额、Top 5 分布与测速</sub>
+    </td>
+    <td width="54%" align="center">
+      <img src="assets/inline-undo-capsule.png" alt="原地撤回编辑与底部双轨胶囊"><br>
+      <sub>原地撤回编辑框与底栏双轨胶囊（跟随系统主题色）</sub>
+    </td>
+  </tr>
+</table>
+
+### 侧边栏增强（最近任务 & 折叠项目角标）
+
+<img src="assets/sidebar-status.png" alt="侧边栏最近任务与折叠项目状态角标" width="320">
 
 ### 使用统计与功能设置
 
