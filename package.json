@@ -1,0 +1,26 @@
+{
+  "name": "agy-kit",
+  "version": "1.2.7",
+  "description": "Next-Gen UI & Telemetry Suite for Google Antigravity 2.x. Dual-track Context Capsule, DSH-style Glassmorphic HUD, and Usage Reports.",
+  "main": "cli.js",
+  "bin": {
+    "agy-kit": "./cli.js"
+  },
+  "keywords": [
+    "antigravity",
+    "google-antigravity",
+    "ai-agent",
+    "context-window",
+    "token-counter",
+    "dsh-ui"
+  ],
+  "author": "fxze",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test",
+    "install-kit": "node cli.js install",
+    "live": "node cli.js live",
+    "status": "node cli.js status",
+    "restore": "node cli.js restore"
+  }
+}
