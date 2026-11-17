@@ -64,7 +64,7 @@ test('趋势点悬浮显示当天明细、突出数据点和辅助线，离开�
 });
 test('模型环图分段完整覆盖总量，颜色对应图例，合并其他模型不丢用量',()=>{
  const {panel}=setup();panel.data={models:Array.from({length:10},(_,i)=>({name:'模型 '+i,tokens:(10-i)*1000000}))};
- const html=panel.renderModels(),segments=[...html.matchAll(/stroke="([^"]+)" stroke-width="32" stroke-dasharray="([\d.]+) ([\d.]+)" stroke-dashoffset="(-?[\d.]+)"/g)];
+ const html=panel.renderModels(),segments=[...html.matchAll(/stroke="([^"]+)" stroke-width="24" stroke-dasharray="([\d.]+) ([\d.]+)" stroke-dashoffset="(-?[\d.]+)"/g)];
  assert.equal(segments.length,8);assert.match(html,/合计 55,000,000 Token/);assert.match(html,/>55M<\/text>/);assert.match(html,/其他模型/);assert.match(html,/6M Token/);
  let offset=0;for(const [,color,length,gap,start] of segments){assert.ok(Math.abs(Number(start)+offset)<1e-8);offset+=Number(length);assert.ok(Math.abs(Number(length)+Number(gap)-2*Math.PI*80)<1e-8);assert.ok(html.includes('background:'+color));}
  assert.ok(Math.abs(offset-2*Math.PI*80)<1e-8);assert.equal((html.match(/role="listitem"/g)||[]).length,8);assert.equal(panel.data.models.length,10);

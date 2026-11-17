@@ -78,7 +78,7 @@
       if(!models.length)return '<p class="text-sm mt-4 mb-0">暂无模型用量</p>';
       if(models.length>8){const rest=models.splice(7);models.push({name:'其他模型',tokens:rest.reduce((sum,model)=>sum+model.tokens,0)});}
       const total=models.reduce((sum,model)=>sum+model.tokens,0),circumference=2*Math.PI*80;
-      const colors=['var(--chart-1,#4383fa)','var(--chart-3,#229447)','var(--chart-4,#9c73ea)','var(--chart-5,#ec4545)','var(--chart-2,#e58b14)','var(--chart-6,#30a6ad)','#d266a5','var(--muted-foreground,#7b8496)'];
+      const colors=['#5B8FF9','#34D399','#A78BFA','#FB7185','#FBBF24','#22D3EE','#F472B6','#94A3B8'];
       let offset=0;
       const slices=models.map((model,i)=>{
         const share=model.tokens/total,percent=share<.001?'&lt;0.1%':Number((share*100).toFixed(1))+'%';
@@ -87,7 +87,7 @@
       });
       return `<div data-model-usage style="display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:20px 24px;margin-top:18px">
         <svg viewBox="0 0 220 220" role="img" aria-label="模型 Token 用量占比，合计 ${n(total)} Token" style="display:block;width:100%;max-width:220px;flex:0 1 220px">
-          ${slices.map(model=>`<circle data-model-slice cx="110" cy="110" r="80" fill="none" stroke="${model.color}" stroke-width="32" stroke-dasharray="${model.length} ${circumference-model.length}" stroke-dashoffset="${-model.start}" transform="rotate(-90 110 110)"><title>${esc(model.name)}：${n(model.tokens)} Token · ${model.percent}</title></circle>`).join('')}
+          ${slices.map(model=>`<circle data-model-slice cx="110" cy="110" r="80" fill="none" stroke="${model.color}" stroke-width="24" stroke-dasharray="${model.length} ${circumference-model.length}" stroke-dashoffset="${-model.start}" transform="rotate(-90 110 110)"><title>${esc(model.name)}：${n(model.tokens)} Token · ${model.percent}</title></circle>`).join('')}
           <text x="110" y="106" text-anchor="middle" fill="var(--foreground)" style="font-size:1rem;font-weight:500">${compact(total)}</text>
           <text x="110" y="126" text-anchor="middle" fill="var(--muted-foreground)" style="font-size:0.75rem">Token</text>
         </svg>
