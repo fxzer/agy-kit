@@ -2,6 +2,27 @@
 
 Google Antigravity 2.x（macOS 桌面端）零依赖原生增强套件，集成了实时上下文/配额监控、使用统计看板、侧边栏效率增强与原地撤回编辑。
 
+## 插件效果
+
+### 实时上下文与配额 HUD
+
+<img src="assets/hud-panel.png" alt="实时上下文与配额 HUD" width="420">
+
+### 使用统计与功能设置
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="assets/usage-stats.png" alt="使用统计看板"><br>
+      <sub>每日趋势与模型用量环图（随客户端主题色同步）</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="assets/feature-settings.png" alt="功能模块开关页"><br>
+      <sub>模块化独立开关（原生风格自适应主题）</sub>
+    </td>
+  </tr>
+</table>
+
 ## 核心功能
 
 - **底部双轨胶囊与实时 HUD**
@@ -59,6 +80,7 @@ npm test              # 运行单元测试
 agy-kit/
 ├── cli.js                    # CLI 入口（live / install / restore / status）
 ├── package.json
+├── assets/                   # README 效果展示截图
 ├── src/
 │   ├── payload.js            # 底部胶囊、HUD 浮层与整体挂载调度
 │   ├── telemetry.js          # RPC 遥测、配额解析与增量步骤采集
