@@ -181,7 +181,7 @@ function installPersistent() {
   const runtimeTemp = path.join(STATE_DIR, 'runtime-staging');
   fs.rmSync(runtimeTemp, { recursive: true, force: true });
   fs.mkdirSync(path.join(runtimeTemp, 'src'), { recursive: true, mode: 0o700 });
-  for (const file of ['backend-service.js', 'history-store.js', 'pricing.js', 'settings-store.js']) {
+  for (const file of ['backend-service.js', 'history-store.js', 'settings-store.js']) {
     fs.copyFileSync(path.join(__dirname, file), path.join(runtimeTemp, 'src', file));
   }
   fs.rmSync(runtimeDir, { recursive: true, force: true });

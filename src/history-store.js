@@ -3,7 +3,6 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const readline = require('readline');
-const { cost } = require('./pricing');
 const numeric = value => Number.isFinite(Number(value)) && Number(value) >= 0 ? Number(value) : 0;
 const dateKey = value => { const d = new Date(value); return Number.isNaN(d.getTime()) ? null : `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
 function normalize(event, { session, source, line }) {
@@ -81,15 +80,15 @@ class HistoryStore {
       for(const r of cached.records){const prev=rows.get(r.id);if(!prev||r.output>=prev.output)rows.set(r.id,r);}
     }
     try { const own=JSON.parse(await fs.promises.readFile(this.file,'utf8'));mergeArchive(rows,own); } catch(e){if(e.code!=='ENOENT')warnings.push('用量归档无法读取');}
-    const daily = new Map(), totals={input:0,output:0,cache:0,cacheCreate:0,requests:0,usd:0,unpriced:0,unpricedTokens:0};
+    const daily = new Map(), totals={input:0,output:0,cache:0,cacheCreate:0,requests:0};
     const result=[...rows.values()];
     const models = new Map();
     for(const r of result) {
       const model = r.model || '模型未记录'; const group = models.get(model) || {name:model,tokens:0,requests:0};group.tokens+=r.input+r.output+r.cache+r.cacheCreate;group.requests++;models.set(model,group);
-      const key=`${r.date}:${r.source}`;const day=daily.get(key)||{date:r.date,source:r.source,input:0,output:0,cache:0,cacheCreate:0,requests:0,usd:0,unpriced:0,unpricedTokens:0};
-      const price=cost(r); for(const target of [day,totals]){for(const k of ['input','output','cache','cacheCreate'])target[k]+=numeric(r[k]);target.requests++;if(price.usd===null){target.unpriced++;target.unpricedTokens+=r.input+r.output+r.cache+r.cacheCreate;}else target.usd+=price.usd;}daily.set(key,day);
+      const key=`${r.date}:${r.source}`;const day=daily.get(key)||{date:r.date,source:r.source,input:0,output:0,cache:0,cacheCreate:0,requests:0};
+      for(const target of [day,totals]){for(const k of ['input','output','cache','cacheCreate'])target[k]+=numeric(r[k]);target.requests++;}daily.set(key,day);
     }
-    return {models:[...models.values()].sort((a,b)=>b.tokens-a.tokens),daily:[...daily.values()].sort((a,b)=>a.date.localeCompare(b.date)),totals,records:result.map(r=>({...r,price:cost(r)})).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,500),warnings:[...new Set(warnings)],files:files.length,scope:'仅统计本机客户端可读取的用量记录',scannedAt:Date.now()};
+    return {models:[...models.values()].sort((a,b)=>b.tokens-a.tokens),daily:[...daily.values()].sort((a,b)=>a.date.localeCompare(b.date)),totals,records:result.sort((a,b)=>b.date.localeCompare(a.date)).slice(0,500),warnings:[...new Set(warnings)],files:files.length,scope:'仅统计本机客户端可读取的用量记录',scannedAt:Date.now()};
   }
 }
 module.exports={HistoryStore,normalize,dateKey,mergeArchive};

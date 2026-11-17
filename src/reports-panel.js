@@ -45,7 +45,7 @@
     }
     renderHistory(){
       this.clearCharts();
-      const sum=this.data.totals,metrics=summarize(this.data.daily);
+      const metrics=summarize(this.data.daily);
       const cards=[[compact(metrics.total),'累计 Token'],[compact(metrics.peak),'单日峰值'],[metrics.activeDays+' 天','活跃天数'],[metrics.current+' 天','当前连续'],[metrics.longest+' 天','最长连续']];
       this.body.innerHTML=`<div style="display:flex;flex-direction:column;gap:20px">
         <div class="rounded-2xl" style="background:color-mix(in srgb,var(--secondary) 50%,var(--background));display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:20px 8px;gap:6px">${cards.map(([value,label])=>`<div style="text-align:center"><div class="text-foreground" style="font-size:1.1875rem;font-weight:500">${esc(value)}</div><div style="font-size:0.75rem;margin-top:7px">${label}</div></div>`).join('')}</div>
@@ -62,13 +62,7 @@
           ${this.renderModels()}
           ${this.data.models?.some(m=>m.name==='模型未记录')?'<p class="text-xs mt-3 mb-0">部分旧记录未包含模型名称，新采集的用量会自动补充。</p>':''}
         </section>
-        <details class="text-xs"><summary class="cursor-pointer">费用参考与数据说明</summary>
-          <p>${n(sum.requests)} 次请求 · 输入 ${n(sum.input)} · 缓存 ${n(sum.cache+sum.cacheCreate)} · 输出 ${n(sum.output)}</p>
-          <p>${sum.unpriced?`部分记录缺少模型或费率，暂不能估算总费用。已知部分 API 等值 $${sum.usd.toFixed(4)}；${n(sum.unpriced)} 次请求未计价。`:`API 等值 $${sum.usd.toFixed(4)}。`}此金额不是订阅账单。</p>
-          <p>只统计客户端可读取的用量。输入含重复发送的上下文，缓存与输出分别计入。连续天数按本地日期计算。</p>
-          <p><a href="https://aistudio.google.com/docs/pricing" target="_blank" rel="noreferrer">Google 费率</a> · <a href="https://platform.claude.com/docs/en/about-claude/pricing" target="_blank" rel="noreferrer">Claude 费率</a>（核对于 2026-11-16，不含工具等额外收费）。</p>
-          ${this.data.warnings.length?`<p>${this.data.warnings.map(esc).join('；')}</p>`:''}
-        </details>
+        ${this.data.warnings.length?`<p class="text-xs text-amber-600 m-0">${this.data.warnings.map(esc).join('；')}</p>`:''}
       </div>`;
       this.drawHeatmap();this.drawTrend();
       for(const b of this.body.querySelectorAll('[data-range]'))b.onclick=()=>{this.range=Number(b.dataset.range);this.renderHistory();};

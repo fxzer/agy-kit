@@ -8,7 +8,7 @@ const { HistoryStore } = require('./history-store');
 const ORIGIN = /^https:\/\/127\.0\.0\.1:\d+$/;
 const settings=require('./settings-store');
 // 进程加载时固定指纹；文件更新后，旧进程不能继续被当作最新后端复用。
-const build=crypto.createHash('sha256').update(Buffer.concat(['backend-service.js','history-store.js','pricing.js','settings-store.js'].map(file=>fs.readFileSync(path.join(__dirname,file))))).digest('hex');
+const build=crypto.createHash('sha256').update(Buffer.concat(['backend-service.js','history-store.js','settings-store.js'].map(file=>fs.readFileSync(path.join(__dirname,file))))).digest('hex');
 let singleton;
 async function start(options={}) {
   if(singleton)return singleton;
