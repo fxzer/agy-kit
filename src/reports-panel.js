@@ -50,11 +50,11 @@
       this.body.innerHTML=`<div style="display:flex;flex-direction:column;gap:20px">
         <div class="rounded-2xl" style="background:color-mix(in srgb,var(--secondary) 50%,var(--background));display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:20px 8px;gap:6px">${cards.map(([value,label])=>`<div style="text-align:center"><div class="text-foreground" style="font-size:1.1875rem;font-weight:500">${esc(value)}</div><div style="font-size:0.75rem;margin-top:7px">${label}</div></div>`).join('')}</div>
         <section class="rounded-2xl" style="background:color-mix(in srgb,var(--secondary) 50%,var(--background));padding:18px 16px">
-          <h3 class="text-base text-foreground m-0 font-medium">Token 活动</h3>
+          <h3 class="text-base text-foreground m-0 font-medium">用量热力</h3>
           <div data-heatmap style="margin-top:16px"></div>
         </section>
         <section class="rounded-2xl" style="background:color-mix(in srgb,var(--secondary) 50%,var(--background));padding:18px 16px">
-          <div style="display:flex;align-items:center;justify-content:space-between"><h3 class="text-base text-foreground m-0 font-medium">每日 Token 趋势</h3>
+          <div style="display:flex;align-items:center;justify-content:space-between"><h3 class="text-base text-foreground m-0 font-medium">每日趋势</h3>
             <div role="group" aria-label="趋势时间范围" class="flex rounded-full p-1 bg-secondary">${[7,30].map(days=>`<button class="rounded-full px-2 py-1 text-xs" data-range="${days}" aria-pressed="${this.range===days}" style="background:${this.range===days?'var(--background)':'transparent'}">近 ${days} 天</button>`).join('')}</div>
           </div><div data-trend></div>
         </section>
@@ -105,7 +105,7 @@
       const max=Math.max(1,...[...daily.values()].map(d=>d.tokens));
       const months=document.createElement('div');months.style.cssText='position:relative;height:20px;font-size:0.75rem;margin-bottom:8px';
       const grid=document.createElement('div');grid.setAttribute('aria-label','过去 52 周客户端 Token 热力图');grid.setAttribute('role','group');grid.style.cssText='display:grid;grid-template-columns:repeat(52,minmax(0,1fr));grid-template-rows:repeat(7,1fr);grid-auto-flow:column;gap:2px';
-      const heatBase='var(--link,var(--cta,#5b95f5))';
+      const heatBase='var(--primary,var(--link,var(--cta,#5b95f5)))';
       let month=-1;
       for(let i=0;i<364;i++){
         const d=new Date(start);d.setDate(start.getDate()+i);const key=dateKey(d),value=daily.get(key)||{tokens:0,requests:0};
@@ -187,10 +187,10 @@
           [data-trend-day],[data-trend-day]:focus,[data-trend-day]:focus-visible,[data-trend-day]:active{outline:none!important;outline-style:none!important;box-shadow:none!important;-webkit-tap-highlight-color:transparent!important;}
         </style>
         ${[0,1,2,3].map(i=>`<line x1="12" x2="608" y1="${16+i*42}" y2="${16+i*42}" stroke="currentColor" opacity=".12" stroke-dasharray="3 4"/>`).join('')}
-        <path fill="none" stroke="var(--link,var(--cta,#5b95f5))" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="${smoothTrendPath(xy)}"/>
+        <path fill="none" stroke="var(--primary,var(--link,var(--cta,#5b95f5)))" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="${smoothTrendPath(xy)}"/>
         ${xy.map(([x,y],i)=>`<g data-trend-day="${points[i].date}" role="button" tabindex="${i===xy.length-1?0:-1}" aria-label="${points[i].date}：${n(points[i].tokens)} Token · ${n(points[i].requests)} 次请求" style="cursor:pointer;outline:none;-webkit-tap-highlight-color:transparent">
-          <line data-trend-guide x1="${x}" x2="${x}" y1="12" y2="148" stroke="var(--link,var(--cta,#5b95f5))" stroke-dasharray="3 4" opacity="0" pointer-events="none"/>
-          <circle data-trend-dot cx="${x}" cy="${y}" r="4" fill="var(--link,var(--cta,#5b95f5))"/>
+          <line data-trend-guide x1="${x}" x2="${x}" y1="12" y2="148" stroke="var(--primary,var(--link,var(--cta,#5b95f5)))" stroke-dasharray="3 4" opacity="0" pointer-events="none"/>
+          <circle data-trend-dot cx="${x}" cy="${y}" r="4" fill="var(--primary,var(--link,var(--cta,#5b95f5)))"/>
           <circle cx="${x}" cy="${y}" r="12" fill="transparent"/>
         </g>`).join('')}
       </svg><div style="display:flex;justify-content:space-between;font-size:0.6875rem"><span>${points[0].date.slice(5)}</span><span>峰值 ${compact(peak)} Token</span><span>${points.at(-1).date.slice(5)}</span></div>`;
