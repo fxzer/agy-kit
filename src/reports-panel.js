@@ -161,7 +161,7 @@
         </div><div style="font-size:0.6875rem;color:var(--muted-foreground);margin-top:7px">合计 ${compact(value.tokens||0)} Token</div>`;
       document.body.appendChild(tip);this.usageTip=tip;cell.setAttribute('aria-describedby',tip.id);
       if(cell.dataset.trendDay){cell.querySelector('[data-trend-dot]').setAttribute('r','5.5');cell.querySelector('[data-trend-guide]').setAttribute('opacity','.45');}
-      else{cell.style.outline='2px solid var(--cta,var(--primary,#007acc))';cell.style.outlineOffset='1px';}
+      else{cell.style.outline='2px solid var(--primary,var(--cta,#007acc))';cell.style.outlineOffset='1px';}
       const rect=(cell.dataset.trendDay?cell.querySelector('[data-trend-dot]'):cell).getBoundingClientRect(),box=tip.getBoundingClientRect();
       tip.style.left=Math.max(12,Math.min(innerWidth-box.width-12,rect.left+rect.width/2-box.width/2))+'px';
       tip.style.top=Math.max(12,rect.top-box.height-10>=12?rect.top-box.height-10:Math.min(innerHeight-box.height-12,rect.bottom+10))+'px';

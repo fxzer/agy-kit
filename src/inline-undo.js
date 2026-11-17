@@ -4,7 +4,7 @@
   const native=ns.__AGY_KIT_NATIVE_UNDO__||window.__AGY_KIT_NATIVE_UNDO__;
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>`&#${c.charCodeAt(0)};`);
   const css=`
-    .agy-user-bubble-frame.agy-bubble-editing-host{box-shadow:0 0 0 1px color-mix(in srgb,var(--cta,var(--primary,#007acc)) 45%,transparent),var(--glass-shadow,0 6px 18px rgba(0,0,0,.12))}
+    .agy-user-bubble-frame.agy-bubble-editing-host{box-shadow:0 0 0 1px color-mix(in srgb,var(--primary,var(--cta,#007acc)) 45%,transparent),var(--glass-shadow,0 6px 18px rgba(0,0,0,.12))}
     .agy-inline-hidden{display:none !important}
     .agy-inline-editor{display:flex;flex-direction:column;gap:8px;width:clamp(340px,50vw,580px);max-width:100%;padding:2px 4px;box-sizing:border-box;font:inherit;line-height:1.5;color:var(--foreground)}
     .agy-inline-textarea,.agy-inline-textarea:focus,.agy-inline-textarea:focus-visible{width:100%;min-height:24px;max-height:240px;resize:none;overflow-y:auto;background:transparent !important;border:0 !important;outline:none !important;box-shadow:none !important;--tw-ring-shadow:0 0 #0000 !important;--tw-ring-offset-shadow:0 0 #0000 !important;color:var(--foreground);font:inherit;line-height:1.5;padding:2px;box-sizing:border-box;margin:0}
@@ -12,15 +12,15 @@
     .agy-inline-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;font-size:0.75rem;color:var(--muted-foreground)}
     .agy-inline-switch{display:inline-flex;align-items:center;gap:5px;cursor:pointer;user-select:none}
     .agy-inline-editor [role=switch]{width:28px;height:16px;padding:0;border:0;border-radius:9999px;flex-shrink:0;position:relative;cursor:pointer;transition:background-color .15s ease}
-    .agy-inline-editor [role=switch] span{position:absolute;top:2px;width:12px;height:12px;background:var(--cta-foreground,#fff);box-shadow:0 1px 2px rgb(0 0 0 / 0.18);border-radius:50%;transition:left .15s ease}
+    .agy-inline-editor [role=switch] span{position:absolute;top:2px;width:12px;height:12px;background:var(--primary-foreground,var(--cta-foreground,#fff));box-shadow:0 1px 2px rgb(0 0 0 / 0.18);border-radius:50%;transition:left .15s ease}
     .agy-inline-status{font-size:0.75rem;color:var(--warning,#f59e0b)}
     .agy-inline-status:empty{display:none}
     .agy-inline-btns{display:flex;align-items:center;gap:5px;margin-left:auto;flex-shrink:0}
     .agy-inline-btns button{cursor:pointer;border:0;border-radius:9999px;padding:0 10px;height:1.625rem;background:var(--secondary,rgba(120,120,128,.15));color:var(--foreground);font-size:0.75rem;font-weight:500;display:inline-flex;align-items:center;transition:opacity .15s ease,background-color .15s ease}
     .agy-inline-btns button:hover:not(:disabled){opacity:.88}
     .agy-inline-btns button:disabled{opacity:.45;cursor:default}
-    .agy-inline-btns button:focus-visible,.agy-inline-editor [role=switch]:focus-visible{outline:2px solid var(--cta,var(--primary,#007acc));outline-offset:2px}
-    .agy-inline-btns [data-send]{background:var(--cta,var(--primary,#007acc));color:var(--cta-foreground,var(--primary-foreground,#fff));padding:0 12px}
+    .agy-inline-btns button:focus-visible,.agy-inline-editor [role=switch]:focus-visible{outline:2px solid var(--primary,var(--cta,#007acc));outline-offset:2px}
+    .agy-inline-btns [data-send]{background:var(--primary,var(--cta,#007acc));color:var(--primary-foreground,var(--cta-foreground,#fff));padding:0 12px}
     .agy-inline-files{font-size:0.75rem;color:var(--muted-foreground)}
     .agy-inline-files:empty{display:none}
     .agy-inline-files details{padding-top:2px}
@@ -166,7 +166,7 @@
         :'无文件变更';
       const hasAttachmentHint=!!(state.bubble?.querySelector?.('.agy-user-bubble-header, img, [data-testid*="attachment"]'));
       metaEl.innerHTML=`
-        ${st.conversationOnlyRevertEnabled?`<label class="agy-inline-switch"><span>撤回文件</span><button type="button" role="switch" aria-label="同时撤回文件更改" aria-checked="${!st.conversationOnly}" style="background:${st.conversationOnly?'var(--secondary,rgba(120,120,128,.2))':'var(--cta,var(--primary,#007acc))'}"><span style="left:${st.conversationOnly?2:14}px"></span></button></label>`:''}
+        ${st.conversationOnlyRevertEnabled?`<label class="agy-inline-switch"><span>撤回文件</span><button type="button" role="switch" aria-label="同时撤回文件更改" aria-checked="${!st.conversationOnly}" style="background:${st.conversationOnly?'var(--secondary,rgba(120,120,128,.2))':'var(--primary,var(--cta,#007acc))'}"><span style="left:${st.conversationOnly?2:14}px"></span></button></label>`:''}
         <span style="opacity:.75">${esc(fileText)}</span>
         ${hasAttachmentHint?'<span style="opacity:.7" title="发送时会自动保留原消息附件；如需增删附件请点「回底部」">· 保留原附件</span>':''}
       `;

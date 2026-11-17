@@ -91,7 +91,7 @@
     #agy-kit-settings-panel [role="switch"] { width:44px; height:24px; padding:0; border:0; }
     #agy-kit-settings-panel [role="switch"] > span { width:16px; height:16px; }
     #agy-kit-settings-panel [role="switch"]:focus-visible,
-    [id^="agy-kit-capsule-root"]:focus-visible { outline:2px solid var(--cta, var(--primary, #007acc)); outline-offset:3px; }
+    [id^="agy-kit-capsule-root"]:focus-visible { outline:2px solid var(--primary, var(--cta, #007acc)); outline-offset:3px; }
     [data-trend-day],[data-trend-day]:focus,[data-trend-day]:focus-visible,[data-trend-day]:active { outline:none !important; box-shadow:none !important; }
 
     .agy-kit-capsule {
