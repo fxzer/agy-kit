@@ -83,7 +83,7 @@
                     <button id="agy-switch-${key}" data-agy-setting="${key}" type="button" role="switch"
                       aria-labelledby="agy-label-${key}" aria-describedby="agy-desc-${key}"
                       class="relative inline-flex items-center rounded-full transition-colors duration-200 ease-in-out shrink-0 h-6 w-11 cursor-pointer">
-                      <span class="inline-block rounded-full transition-transform duration-200 ease-in-out shadow-sm h-4 w-4" style="background:var(--primary-foreground,var(--cta-foreground,#ffffff))"></span>
+                      <span class="inline-block rounded-full transition-transform duration-200 ease-in-out shadow-sm h-4 w-4" style="background:#ffffff"></span>
                     </button>
                   </div>`).join('')}
               </div>

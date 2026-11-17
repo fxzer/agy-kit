@@ -12,7 +12,7 @@
     .agy-inline-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;font-size:0.75rem;color:var(--muted-foreground)}
     .agy-inline-switch{display:inline-flex;align-items:center;gap:5px;cursor:pointer;user-select:none}
     .agy-inline-editor [role=switch]{width:28px;height:16px;padding:0;border:0;border-radius:9999px;flex-shrink:0;position:relative;cursor:pointer;transition:background-color .15s ease}
-    .agy-inline-editor [role=switch] span{position:absolute;top:2px;width:12px;height:12px;background:var(--primary-foreground,var(--cta-foreground,#fff));box-shadow:0 1px 2px rgb(0 0 0 / 0.18);border-radius:50%;transition:left .15s ease}
+    .agy-inline-editor [role=switch] span{position:absolute;top:2px;width:12px;height:12px;background:#ffffff;box-shadow:0 1px 2px rgb(0 0 0 / 0.18);border-radius:50%;transition:left .15s ease}
     .agy-inline-status{font-size:0.75rem;color:var(--warning,#f59e0b)}
     .agy-inline-status:empty{display:none}
     .agy-inline-btns{display:flex;align-items:center;gap:5px;margin-left:auto;flex-shrink:0}
