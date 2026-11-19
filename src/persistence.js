@@ -5,15 +5,10 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const childProcess = require('child_process');
-const { readHeader, extractAll, packDirectory, getHeaderHash } = require('./asar-engine');
+const { readHeader, readAsarFile, extractAll, packDirectory, getHeaderHash } = require('./asar-engine');
 
-const APP_BUNDLE = '/Applications/Antigravity.app';
-const RESOURCES = path.join(APP_BUNDLE, 'Contents', 'Resources');
-const ASAR_PATH = path.join(RESOURCES, 'app.asar');
-const INFO_PLIST = path.join(APP_BUNDLE, 'Contents', 'Info.plist');
-const PAYLOAD_DEST = path.join(RESOURCES, 'agy-kit-payload.js');
-const STATE_DIR = path.join(os.homedir(), '.gemini', 'agy-kit');
-const STATE_FILE = path.join(STATE_DIR, 'install-state.json');
+const DEFAULT_APP_BUNDLE = '/Applications/Antigravity.app';
+const DEFAULT_STATE_DIR = path.join(os.homedir(), '.gemini', 'agy-kit');
 const HOOK_MARKER = '/* AGY_KIT_STARTUP_HOOK_V8 */';
 
 function sha256(filePath) {
@@ -24,14 +19,6 @@ function copyDirectory(source, destination) {
   fs.rmSync(destination, { recursive: true, force: true });
   if (fs.existsSync(source)) fs.cpSync(source, destination, { recursive: true, preserveTimestamps: true });
   else fs.mkdirSync(destination, { recursive: true });
-}
-
-function writeState(state) {
-  fs.mkdirSync(STATE_DIR, { recursive: true, mode: 0o700 });
-  const temporary = `${STATE_FILE}.${process.pid}.tmp`;
-  fs.writeFileSync(temporary, JSON.stringify(state, null, 2), { mode: 0o600 });
-  fs.chmodSync(temporary, 0o600);
-  fs.renameSync(temporary, STATE_FILE);
 }
 
 function hashDirectory(directory) {
@@ -50,7 +37,7 @@ function hashDirectory(directory) {
   return hash.digest('hex');
 }
 
-function assertAppClosed() {
+function defaultAssertAppClosed() {
   try {
     childProcess.execFileSync('/usr/bin/pgrep', ['-x', 'Antigravity'], { stdio: 'ignore' });
     throw new Error('请先完全退出 Antigravity，再运行持久安装或恢复。');
@@ -60,6 +47,13 @@ function assertAppClosed() {
   }
 }
 
+function getDeclaredAsarHash(infoPlist) {
+  return childProcess.execFileSync('/usr/libexec/PlistBuddy', [
+    '-c', 'Print :ElectronAsarIntegrity:Resources/app.asar:hash',
+    infoPlist
+  ], { encoding: 'utf8' }).trim();
+}
+
 function setIntegrityHash(infoPlist, hash) {
   childProcess.execFileSync('/usr/libexec/PlistBuddy', [
     '-c', `Set :ElectronAsarIntegrity:Resources/app.asar:hash ${hash}`,
@@ -67,8 +61,8 @@ function setIntegrityHash(infoPlist, hash) {
   ], { stdio: 'pipe' });
 }
 
-function signApp() {
-  childProcess.execFileSync('/usr/bin/codesign', ['--force', '--deep', '--sign', '-', APP_BUNDLE], { stdio: 'inherit' });
+function defaultSignApp(appBundle) {
+  childProcess.execFileSync('/usr/bin/codesign', ['--force', '--deep', '--sign', '-', appBundle], { stdio: 'inherit' });
 }
 
 function startupHookSha256() {
@@ -94,8 +88,72 @@ function patchMain(mainPath) {
   return true;
 }
 
-function updateInstalled(prior) {
-  const source = require('./renderer-source')();
+function createPersistence(config = {}) {
+  const APP_BUNDLE = config.appBundle || DEFAULT_APP_BUNDLE;
+  const RESOURCES = path.join(APP_BUNDLE, 'Contents', 'Resources');
+  const ASAR_PATH = path.join(RESOURCES, 'app.asar');
+  const INFO_PLIST = path.join(APP_BUNDLE, 'Contents', 'Info.plist');
+  const PAYLOAD_DEST = path.join(RESOURCES, 'agy-kit-payload.js');
+  const STATE_DIR = config.stateDir || DEFAULT_STATE_DIR;
+  const STATE_FILE = path.join(STATE_DIR, 'install-state.json');
+  const platform = config.platform || process.platform;
+  const assertAppClosed = config.assertAppClosed || defaultAssertAppClosed;
+  const signApp = config.signApp || (() => defaultSignApp(APP_BUNDLE));
+  const getRendererSource = config.getRendererSource || (() => require('./renderer-source')());
+
+  function writeState(state) {
+    fs.mkdirSync(STATE_DIR, { recursive: true, mode: 0o700 });
+    const temporary = `${STATE_FILE}.${process.pid}.tmp`;
+    fs.writeFileSync(temporary, JSON.stringify(state, null, 2), { mode: 0o600 });
+    fs.chmodSync(temporary, 0o600);
+    fs.renameSync(temporary, STATE_FILE);
+  }
+
+  function getPreviousState() {
+    if (!fs.existsSync(STATE_FILE)) return null;
+    try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); }
+    catch { throw new Error(`安装状态文件无法解析：${STATE_FILE}`); }
+  }
+
+  function inspectBundle(prior) {
+    if (!fs.existsSync(ASAR_PATH) || !fs.existsSync(INFO_PLIST)) {
+      return { intact: false, hasHook: false, matchesPrior: false, cleanOfficial: false };
+    }
+    const currentHeaderHash = getHeaderHash(ASAR_PATH);
+    let declaredHash = '';
+    try { declaredHash = getDeclaredAsarHash(INFO_PLIST); } catch {}
+    let hasHook = false;
+    try {
+      const main = readAsarFile(ASAR_PATH, 'dist/main.js').toString('utf8');
+      hasHook = /\/\* AGY_KIT_STARTUP_HOOK_V\d+ \*\//.test(main);
+    } catch {}
+    const cleanOfficial = !hasHook && Boolean(declaredHash) && declaredHash === currentHeaderHash;
+    const matchesPrior = Boolean(
+      prior?.status === 'installed' &&
+      hasHook &&
+      currentHeaderHash === prior.installedHeaderHash &&
+      fs.existsSync(PAYLOAD_DEST) &&
+      sha256(PAYLOAD_DEST) === prior.installedPayloadSha256 &&
+      sha256(INFO_PLIST) === prior.installedPlistSha256
+    );
+    return { intact: true, hasHook, matchesPrior, cleanOfficial, currentHeaderHash, declaredHash };
+  }
+
+  function getInstallStatus() {
+    const prior = getPreviousState();
+    if (!prior || prior.status !== 'installed') {
+      return { state: prior?.status || 'none', label: '未安装', prior };
+    }
+    const bundle = inspectBundle(prior);
+    if (bundle.matchesPrior) return { state: 'installed', label: '已安装', prior };
+    if (bundle.cleanOfficial) {
+      return { state: 'app-updated', label: '已失效（Antigravity 已更新，请重新运行 node cli.js install）', prior };
+    }
+    return { state: 'changed', label: '异常（客户端文件与安装记录不一致）', prior };
+  }
+
+  function updateInstalled(prior) {
+    const source = getRendererSource();
   const nextPayloadHash = crypto.createHash('sha256').update(source).digest('hex');
   const nextStartupHash = startupHookSha256();
   if (nextPayloadHash === prior.installedPayloadSha256 && nextStartupHash === prior.installedStartupHookSha256) {
@@ -166,14 +224,8 @@ function updateInstalled(prior) {
   }
 }
 
-function getPreviousState() {
-  if (!fs.existsSync(STATE_FILE)) return null;
-  try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); }
-  catch { throw new Error(`安装状态文件无法解析：${STATE_FILE}`); }
-}
-
 function installPersistent() {
-  if (process.platform !== 'darwin') throw new Error('持久安装目前只支持 macOS。');
+  if (platform !== 'darwin') throw new Error('持久安装目前只支持 macOS。');
   if (!fs.existsSync(ASAR_PATH) || !fs.existsSync(INFO_PLIST)) throw new Error(`Antigravity 安装不完整：${APP_BUNDLE}`);
   assertAppClosed();
 
@@ -191,23 +243,23 @@ function installPersistent() {
     throw new Error('检测到上次安装未完成；请先运行 node cli.js restore 还原安装前备份。');
   }
   if (prior?.status === 'installed' && fs.existsSync(ASAR_PATH)) {
-    const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'agy-kit-check-'));
-    try {
-      extractAll(ASAR_PATH, temp);
-      const main = fs.readFileSync(path.join(temp, 'dist', 'main.js'), 'utf8');
-      if (/\/\* AGY_KIT_STARTUP_HOOK_V\d+ \*\//.test(main) && getHeaderHash(ASAR_PATH) === prior.installedHeaderHash &&
-        fs.existsSync(PAYLOAD_DEST) && sha256(PAYLOAD_DEST) === prior.installedPayloadSha256 &&
-        sha256(INFO_PLIST) === prior.installedPlistSha256) {
-        return updateInstalled(prior);
+    const bundle = inspectBundle(prior);
+    if (bundle.matchesPrior) {
+      return updateInstalled(prior);
+    }
+    if (bundle.cleanOfficial) {
+      // Antigravity 覆盖更新后客户端已变为干净新版；若残留旧版 agy-kit-payload.js 则先移除，
+      // 避免把历史载荷当成客户端原装文件写入新版基线备份。
+      if (!prior.hadPayload && fs.existsSync(PAYLOAD_DEST)) {
+        fs.rmSync(PAYLOAD_DEST, { force: true });
       }
-      throw new Error('安装后的客户端文件已变化；请先检查更新或运行 restore，再重新安装。');
-    } finally { fs.rmSync(temp, { recursive: true, force: true }); }
+    } else {
+      throw new Error('安装后的客户端文件已变化且完整性校验未通过；请先检查或重装 Antigravity 后再试。');
+    }
   }
 
   const originalHeaderHash = getHeaderHash(ASAR_PATH);
-  const declaredHash = childProcess.execFileSync('/usr/libexec/PlistBuddy', [
-    '-c', 'Print :ElectronAsarIntegrity:Resources/app.asar:hash', INFO_PLIST
-  ], { encoding: 'utf8' }).trim();
+  const declaredHash = getDeclaredAsarHash(INFO_PLIST);
   if (declaredHash !== originalHeaderHash) {
     throw new Error(`当前 app.asar 与 Info.plist 完整性哈希不匹配，拒绝安装（plist=${declaredHash}，asar=${originalHeaderHash}）。`);
   }
@@ -260,7 +312,7 @@ function installPersistent() {
     fs.copyFileSync(INFO_PLIST, stagedPlist);
     setIntegrityHash(stagedPlist, getHeaderHash(stagedAsar));
 
-    fs.writeFileSync(payloadTemp, require('./renderer-source')());
+    fs.writeFileSync(payloadTemp, getRendererSource());
     fs.chmodSync(payloadTemp, 0o644);
     fs.renameSync(stagedAsar, ASAR_PATH);
     modified = true;
@@ -304,7 +356,7 @@ function installPersistent() {
 }
 
 function restorePersistent() {
-  if (process.platform !== 'darwin') throw new Error('持久安装恢复目前只支持 macOS。');
+  if (platform !== 'darwin') throw new Error('持久安装恢复目前只支持 macOS。');
   assertAppClosed();
   const state = getPreviousState();
   if (!state || !['installed', 'preparing', 'rolled-back'].includes(state.status)) throw new Error('没有找到可恢复的 agy-kit 安装记录。');
@@ -321,6 +373,10 @@ function restorePersistent() {
     throw new Error('Payload 安装前备份校验失败，未改动 Antigravity。');
   }
   if (state.status === 'installed' && (getHeaderHash(ASAR_PATH) !== state.installedHeaderHash || sha256(INFO_PLIST) !== state.installedPlistSha256)) {
+    const bundle = inspectBundle(state);
+    if (bundle.cleanOfficial) {
+      throw new Error('检测到 Antigravity 已更新为新版干净客户端，无需恢复旧版备份；如需继续使用请直接运行 node cli.js install。');
+    }
     throw new Error('Antigravity 文件在安装后又发生变化；为避免覆盖客户端更新，拒绝自动恢复。');
   }
 
@@ -360,4 +416,7 @@ function restorePersistent() {
   }
 }
 
-module.exports = { installPersistent, restorePersistent, getPreviousState, patchMain };
+  return { installPersistent, restorePersistent, getPreviousState, getInstallStatus };
+}
+
+module.exports = { ...createPersistence(), patchMain, createPersistence };

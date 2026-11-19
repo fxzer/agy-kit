@@ -55,7 +55,7 @@ Google Antigravity 2.x（macOS 桌面端）零依赖原生增强套件，集成�
 
 ## 环境要求
 
-- macOS + [Antigravity](https://antigravity.google/) 桌面客户端（`/Applications/Antigravity.app`）
+- macOS + [Antigravity](https://antigravity.google/) 桌面客户端（`/Applications/Antigravity.app`，已适配至 `2.33.0`）
 - Node.js 18+（零第三方依赖，无需 `npm install`）
 
 ## 安装与使用
@@ -81,6 +81,8 @@ node cli.js install   # 或 npm run install-kit
 # 卸载并无损恢复安装前备份
 node cli.js restore   # 或 npm run restore
 ```
+
+> 若 Antigravity 客户端升级覆盖了 `app.asar`，完全退出客户端后直接重新执行 `node cli.js install` 即可重新注入（无需先运行 `restore`），历史统计与开关配置不会丢失。
 
 ### 3. 状态检查与测试
 

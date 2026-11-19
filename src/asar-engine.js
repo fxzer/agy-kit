@@ -75,6 +75,27 @@ function getReferenceNode(header, relative) {
   return current;
 }
 
+function readAsarFile(archivePath, relativePath) {
+  const normalized = String(relativePath || '').replace(/\\/g, '/').replace(/^\/+/, '');
+  const { header, baseOffset } = readHeader(archivePath);
+  const entry = getReferenceNode(header, normalized);
+  if (!entry || entry.files) throw new Error(`ASAR file not found: ${normalized}`);
+  if (entry.link) throw new Error(`ASAR symbolic links are not supported: ${normalized}`);
+  if (entry.unpacked) {
+    const source = path.join(`${archivePath}.unpacked`, normalized);
+    if (!fs.existsSync(source)) throw new Error(`Missing unpacked ASAR file: ${normalized}`);
+    return fs.readFileSync(source);
+  }
+  const fd = fs.openSync(archivePath, 'r');
+  try {
+    const data = Buffer.alloc(entry.size);
+    fs.readSync(fd, data, 0, entry.size, baseOffset + Number(entry.offset));
+    return data;
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
 function packDirectory(sourceDir, archivePath, options = {}) {
   let offset = 0;
   const packedFiles = [];
@@ -155,4 +176,4 @@ function getHeaderHash(archivePath) {
   }
 }
 
-module.exports = { readHeader, extractAll, packDirectory, getHeaderHash };
+module.exports = { readHeader, readAsarFile, extractAll, packDirectory, getHeaderHash };

@@ -135,8 +135,9 @@ function checkStatus() {
   console.log(`  - 宿主路径: ${ASAR_PATH} (${fs.existsSync(ASAR_PATH) ? '存在' : '缺失'})`);
   console.log(`  - CDP 调试端口: ${port || '未开启/未运行'}`);
   console.log(`  - 本地 Payload: ${PAYLOAD_FILE} (${fs.existsSync(PAYLOAD_FILE) ? '就绪' : '缺失'})`);
-  const installState = persistence.getPreviousState();
-  console.log(`  - 持久安装: ${installState?.status === 'installed' ? '已安装' : '未安装'}`);
+  const installStatus = persistence.getInstallStatus();
+  const installState = installStatus.prior;
+  console.log(`  - 持久安装: ${installStatus.label}`);
   const managedBackup = installState?.asarBackup && fs.existsSync(installState.asarBackup);
   console.log(`  - 本次安装回滚备份: ${managedBackup ? '存在' : '无（当前未安装或状态文件缺失）'}`);
   const legacyBackup = `${ASAR_PATH}.orig.bak`;
