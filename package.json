@@ -1,6 +1,6 @@
 {
   "name": "agy-kit",
-  "version": "1.2.8",
+  "version": "1.3.0",
   "description": "Next-Gen UI & Telemetry Suite for Google Antigravity 2.x. Dual-track Context Capsule, DSH-style Glassmorphic HUD, and Usage Reports.",
   "main": "cli.js",
   "bin": {
