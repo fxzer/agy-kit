@@ -53,3 +53,30 @@ test('冷却期间保留生成跟踪并安排到期重试，已结束会话也�
   c.onVisibility();
   assert.equal(delays.at(-1), 250);
 });
+test('配额显示为 0% 时不渲染 SVG 进度弧，消除 round linecap 红点残留', () => {
+  const c = capsule();
+  c.telemetry.quotaReady = true;
+  c.telemetry.quota.matchedGroup = 'Claude and GPT models';
+  c.telemetry.quota.groups = [
+    {
+      name: 'Gemini Models',
+      buckets: [
+        { window: '5h', label: '5h 限额', percent: 91, percentRounded: 91, resetCountdown: '1小时12分钟后重置' },
+        { window: 'weekly', label: '周限额', percent: 0.4, percentRounded: 0, resetCountdown: '4天20小时后重置' }
+      ]
+    },
+    {
+      name: 'Claude and GPT models',
+      buckets: [
+        { window: '5h', label: '5h 限额', percent: 0, percentRounded: 0, resetCountdown: '1小时39分钟后重置' },
+        { window: 'weekly', label: '周限额', percent: 0, percentRounded: 0, resetCountdown: '6天3小时后重置' }
+      ]
+    }
+  ];
+  c.renderHUDContent();
+  // 0% 弧段（包括 percent=0.4 但 percentRounded=0 的情况）不应生成 stroke-linecap="round" 的进度圆环
+  const progressCircles = [...c.hud.innerHTML.matchAll(/<circle[^>]*stroke-linecap="round"[^>]*>/g)];
+  assert.equal(progressCircles.length, 1);
+  assert.match(progressCircles[0][0], /r="17"/);
+  assert.match(progressCircles[0][0], /stroke="#017ACC"/);
+});

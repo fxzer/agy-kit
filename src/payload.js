@@ -462,13 +462,15 @@
                 const bWk = g.buckets.find(b => b.window === 'weekly');
                 const p5h = b5h ? Math.min(100, Math.max(0, b5h.percent)) : null;
                 const pWk = bWk ? Math.min(100, Math.max(0, bWk.percent)) : null;
+                const r5h = b5h ? Math.min(100, Math.max(0, b5h.percentRounded)) : null;
+                const rWk = bWk ? Math.min(100, Math.max(0, bWk.percentRounded)) : null;
                 // 内环 (5h): 主色调 #017ACC；外环 (1w): 同调冷青绿 #019E86（亮度权重与主色对齐）；警戒红/琥珀橙
                 const colWk = pWk !== null ? (pWk <= 20 ? '#e5484d' : (pWk <= 50 ? '#d97706' : '#019E86')) : '#71717a';
                 const col5h = p5h !== null ? (p5h <= 20 ? '#e5484d' : (p5h <= 50 ? '#d97706' : '#017ACC')) : '#71717a';
                 // 放大至 60px：外环 r=24.5 (周长 153.94)，内环 r=17 (周长 106.81，内净径 31.2px)
                 const cOut = 153.94, cIn = 106.81;
-                const dashOut = pWk !== null ? `${((pWk / 100) * cOut).toFixed(1)} ${cOut}` : '0 153.94';
-                const dashIn = p5h !== null ? `${((p5h / 100) * cIn).toFixed(1)} ${cIn}` : '0 106.81';
+                const dashOut = rWk > 0 ? `${((rWk / 100) * cOut).toFixed(1)} ${cOut}` : '0 153.94';
+                const dashIn = r5h > 0 ? `${((r5h / 100) * cIn).toFixed(1)} ${cIn}` : '0 106.81';
                 const centerVal = b5h ? b5h.percentRounded : (bWk ? bWk.percentRounded : 0);
                 const centerLabel = b5h ? '5h' : '1w';
                 const cardStyle = isCurrent
@@ -492,10 +494,10 @@
                       <svg viewBox="0 0 60 60" width="60" height="60" aria-hidden="true">
                         <!-- 外环底轨与周额度 (1w) -->
                         <circle cx="30" cy="30" r="24.5" fill="none" stroke="${bWk ? 'rgba(120,120,128,.18)' : 'rgba(120,120,128,.08)'}" stroke-width="2.8" ${bWk ? '' : 'stroke-dasharray="2 2"'} />
-                        ${bWk ? `<circle cx="30" cy="30" r="24.5" fill="none" stroke="${colWk}" stroke-width="2.8" stroke-linecap="round" stroke-dasharray="${dashOut}" transform="rotate(-90 30 30)" />` : ''}
+                        ${rWk > 0 ? `<circle cx="30" cy="30" r="24.5" fill="none" stroke="${colWk}" stroke-width="2.8" stroke-linecap="round" stroke-dasharray="${dashOut}" transform="rotate(-90 30 30)" />` : ''}
                         <!-- 内环底轨与 5h 额度 (Argon 无 5h 则显示浅虚线) -->
                         <circle cx="30" cy="30" r="17" fill="none" stroke="${b5h ? 'rgba(120,120,128,.18)' : 'rgba(120,120,128,.08)'}" stroke-width="3" ${b5h ? '' : 'stroke-dasharray="2 2"'} />
-                        ${b5h ? `<circle cx="30" cy="30" r="17" fill="none" stroke="${col5h}" stroke-width="3" stroke-linecap="round" stroke-dasharray="${dashIn}" transform="rotate(-90 30 30)" />` : ''}
+                        ${r5h > 0 ? `<circle cx="30" cy="30" r="17" fill="none" stroke="${col5h}" stroke-width="3" stroke-linecap="round" stroke-dasharray="${dashIn}" transform="rotate(-90 30 30)" />` : ''}
                       </svg>
                       <!-- 双环圆心主读数 -->
                       <div style="position:absolute;inset:0;padding-top:2px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;pointer-events:none">
