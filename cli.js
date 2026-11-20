@@ -138,6 +138,7 @@ function checkStatus() {
   const installStatus = persistence.getInstallStatus();
   const installState = installStatus.prior;
   console.log(`  - 持久安装: ${installStatus.label}`);
+  if (installStatus.zhTitlePatch) console.log(`  - 中文会话标题补丁: ${installStatus.zhTitlePatch.label}`);
   const managedBackup = installState?.asarBackup && fs.existsSync(installState.asarBackup);
   console.log(`  - 本次安装回滚备份: ${managedBackup ? '存在' : '无（当前未安装或状态文件缺失）'}`);
   const legacyBackup = `${ASAR_PATH}.orig.bak`;
@@ -157,6 +158,11 @@ switch (action) {
     try {
       const result = persistence.installPersistent();
       console.log(result.alreadyInstalled ? '✅ agy-kit 已持久安装。' : '✅ 持久安装完成，请重新启动 Antigravity。');
+      if (result.zhTitlePatch?.patched) {
+        console.log('✅ 中文会话标题补丁已写入 language_server（新会话将直接生成中文标题）。');
+      } else if (result.zhTitlePatch?.skipped && result.zhTitlePatch.reason) {
+        console.warn(`⚠️ 中文会话标题补丁未应用：${result.zhTitlePatch.reason}`);
+      }
     } catch (err) {
       console.error('❌ 持久安装失败:', err.message);
       process.exitCode = 1;
