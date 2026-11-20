@@ -14,19 +14,22 @@
       aria: 'Recent conversations',
       showMore: n => `Show more (${n})`,
       showLess: 'Show less',
-      justNow: 'now'
+      justNow: 'now',
+      newInProject: name => name ? `New conversation in ${name}` : 'New conversation in project'
     },
     zh: {
       title: '最近',
       aria: '最近任务',
       showMore: n => `显示更多 (${n})`,
       showLess: '收起至 5 条',
-      justNow: '刚刚'
+      justNow: '刚刚',
+      newInProject: name => name ? `在 ${name} 中新建对话` : '在此项目中新建对话'
     }
   };
 
   const CHEVRON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 -960 960 960" fill="currentColor" class="agy-recent-chevron shrink-0"><path d="M517.85-480l-184-184L376-706.15L602.15-480L376-253.85L333.85-296l184-184Z"></path></svg>';
   const FOLDER_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 -960 960 960" fill="currentColor" class="shrink-0" data-project-glyph="folder"><path d="M172.31-180Q142-180 121-201t-21-51.31V-707.69Q100-738 121-759t51.31-21H391.92l80,80H787.69Q818-700 839-679t21,51.31v375.38Q860-222 839-201t-51.31,21H172.31Zm0-60H787.69q5.39,0 8.85-3.46t3.46-8.85V-627.69q0-5.39-3.46-8.85T787.69-640H447.38l-80-80H172.31q-5.39,0-8.85,3.46T160-707.69v455.38q0,5.39 3.46,8.85t8.85,3.46ZM160-240q0,0 0-3.46t0-8.85V-707.69q0-5.39 0-8.85t0-3.46v80q0,0 0,3.46t0,8.85v375.38q0,5.39 0,8.85t0,3.46Z"></path></svg>';
+  const ADD_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="1.05em" height="1.05em" viewBox="0 -960 960 960" fill="currentColor" class="shrink-0" data-project-action-glyph="add"><path d="M450-450H250q-12.75,0-21.37-8.63T220-480.01t8.62-21.37T250-510H450V-710q0-12.75 8.63-21.37T480.01-740t21.37,8.62T510-710v200H710q12.75,0 21.37,8.63T740-479.99t-8.62,21.37T710-450H510v200q0,12.75-8.63,21.37T479.99-220t-21.37-8.62T450-250V-450Z"></path></svg>';
 
   const CSS = `
     #agy-kit-recent-section + .h-full {
@@ -81,6 +84,33 @@
       text-align: left;
       font: inherit;
     }
+    .agy-recent-project-add {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.35em;
+      height: 1.35em;
+      margin: -0.175em -2px -0.175em 4px;
+      border-radius: 4px;
+      color: var(--muted-foreground);
+      background: transparent;
+      opacity: 0;
+      pointer-events: none;
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: opacity 0.12s ease, background-color 0.12s ease, color 0.12s ease;
+    }
+    .agy-recent-row:hover .agy-recent-project-add,
+    .agy-recent-row:focus-within .agy-recent-project-add {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .agy-recent-project-add:hover,
+    .agy-recent-project-add:focus-visible {
+      color: var(--foreground);
+      background-color: var(--sidebar-secondary, rgba(120, 120, 128, 0.18));
+      outline: none;
+    }
     .agy-recent-more {
       width: 100%;
       margin-top: 2px;
@@ -119,6 +149,18 @@
     return name || '';
   }
 
+  function resolveProjectId(summary, projectLabels, projectLabel) {
+    const pid = summary?.trajectoryMetadata?.projectId;
+    if (pid && pid !== 'outside-of-project') return pid;
+    const label = projectLabel ?? resolveProjectLabel(summary, projectLabels);
+    if (label && projectLabels && typeof projectLabels.entries === 'function') {
+      for (const [id, name] of projectLabels.entries()) {
+        if (name === label && id && id !== 'outside-of-project') return id;
+      }
+    }
+    return summary?.trajectoryMetadata?.workspaceUris?.[0] || '';
+  }
+
   function selectRecentConversations(state, projectLabels, activeCascadeId, hasFocus = true, limit = 5, zh = isZhHost?.() ?? false) {
     const summaries = state?.trajectorySummaries?.summaries || {};
     const list = [];
@@ -132,10 +174,13 @@
       const updatedAt = Math.max(secondsOf(summary.lastModifiedTime), secondsOf(summary.createdTime));
       const status = classifyConversation(id, summary, state, activeCascadeId, hasFocus);
       const priority = status?.kind === 'pending' ? 3 : status?.kind === 'running' ? 2 : 1;
+      const project = resolveProjectLabel(summary, projectLabels);
+      const projectId = project ? resolveProjectId(summary, projectLabels, project) : '';
       list.push({
         id,
         title,
-        project: resolveProjectLabel(summary, projectLabels),
+        project,
+        projectId,
         updatedAt,
         status,
         priority
@@ -166,6 +211,37 @@
     }
   }
 
+  function startNewProjectConversation(projectId, bindings) {
+    if (!projectId) return;
+    const startFn = typeof bindings?.startProjectConversation === 'function' ? bindings.startProjectConversation : null;
+    if (startFn) {
+      try {
+        startFn(projectId);
+        return;
+      } catch {}
+    }
+    const store = bindings?.store;
+    if (store && typeof store.dispatch === 'function') {
+      try {
+        store.dispatch({ type: 'newConvoResourceSelector/setPseudoProjectSelected', payload: false });
+        store.dispatch({ type: 'newConvoResourceSelector/setLastSelectedProject', payload: projectId });
+      } catch {}
+    }
+    const router = bindings?.router || (typeof bindings?.navigate === 'function' ? bindings : null);
+    if (router && typeof router.navigate === 'function') {
+      try {
+        router.navigate({ to: '/', search: { project: projectId } });
+        return;
+      } catch {}
+    }
+    if (typeof history === 'object' && typeof history.pushState === 'function') {
+      history.pushState(null, '', `/?project=${encodeURIComponent(projectId)}`);
+      if (typeof window === 'object' && typeof PopStateEvent === 'function') {
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      }
+    }
+  }
+
   class RecentSectionModule {
     constructor() {
       this.mounted = false;
@@ -176,6 +252,7 @@
       this.style = null;
       this.storeRef = null;
       this.routerRef = null;
+      this.bindingsRef = null;
       this.unsubscribe = null;
       this.timer = null;
       this.onFocus = () => this.scheduleSync();
@@ -228,6 +305,13 @@
           this.sync();
           return;
         }
+        const addProject = e.target.closest?.('[data-recent-project-add]');
+        if (addProject) {
+          e.stopPropagation?.();
+          startNewProjectConversation(addProject.dataset.recentProjectAdd, this.bindingsRef || { router: this.routerRef, store: this.storeRef });
+          this.scheduleSync();
+          return;
+        }
         const row = e.target.closest?.('[data-recent-id]');
         if (row) {
           navigateToConversation(row.dataset.recentId, this.routerRef);
@@ -248,6 +332,7 @@
         return;
       }
       const { store, router, projectLabels, sidebar } = bindings;
+      this.bindingsRef = bindings;
       this.routerRef = router || this.routerRef;
       this.ensureSubscription(store);
       const parent = sidebar.parentElement;
@@ -274,24 +359,27 @@
           ${items.map(item => {
             const selected = item.id === activeId;
             const rowCls = [
-              'agy-recent-row relative w-full select-none cursor-pointer rounded-lg flex flex-row justify-between agy-sidebar-row group px-2 py-1.5',
-              item.project ? 'items-start' : 'items-center',
+              'agy-recent-row relative w-full select-none cursor-pointer rounded-lg flex flex-col justify-center agy-sidebar-row group px-2 py-1.5',
               selected ? 'bg-sidebar-secondary' : 'bg-transparent hover:bg-sidebar-muted'
             ].join(' ');
             const textCls = selected
               ? 'flex flex-col items-start min-w-0 transition-opacity w-full'
               : 'flex flex-col items-start min-w-0 transition-opacity w-full text-secondary-foreground group-hover:text-foreground';
+            const addLabel = item.project ? t.newInProject(item.project) : '';
+            const addBtnHtml = item.projectId
+              ? `<span role="button" tabindex="0" class="agy-recent-project-add" data-recent-project-add="${esc(item.projectId)}" title="${esc(addLabel)}" aria-label="${esc(addLabel)}">${ADD_SVG}</span>`
+              : '';
             return `
             <button type="button" class="${rowCls}" data-recent-id="${esc(item.id)}" data-selected="${selected}">
-              <span class="relative flex gap-2 grow min-w-0 items-center pointer-events-none">
-                <span class="${textCls}">
-                  <span class="truncate text-left w-full">${esc(item.title)}</span>
-                  ${item.project ? `<span class="flex items-center gap-1 w-full min-w-0 text-sm text-left text-muted-foreground select-none">${FOLDER_SVG}<span class="min-w-0 truncate">${esc(item.project)}</span></span>` : ''}
+              <span class="${textCls} pointer-events-none">
+                <span class="flex items-center justify-between w-full min-w-0 gap-2">
+                  <span class="truncate text-left min-w-0 flex-1">${esc(item.title)}</span>
+                  <span class="relative flex items-center shrink-0 gap-1.5">
+                    ${item.status ? renderBadgeIcon(item.status.kind, item.status.subkind) : ''}
+                    <span class="text-sm text-foreground opacity-60 min-w-4 shrink-0 text-right tabular-nums">${esc(formatAge(item.updatedAt, undefined, zh))}</span>
+                  </span>
                 </span>
-              </span>
-              <span class="relative flex items-center shrink-0 ml-2 pointer-events-none gap-1.5 ${item.project ? 'h-[1lh]' : ''}">
-                ${item.status ? renderBadgeIcon(item.status.kind, item.status.subkind) : ''}
-                <span class="text-sm text-foreground opacity-60 min-w-4 shrink-0 text-right tabular-nums">${esc(formatAge(item.updatedAt, undefined, zh))}</span>
+                ${item.project ? `<span class="flex items-center justify-between gap-1 w-full min-w-0 text-sm text-left text-muted-foreground select-none"><span class="flex items-center gap-1 min-w-0 flex-1">${FOLDER_SVG}<span class="min-w-0 truncate">${esc(item.project)}</span></span>${addBtnHtml}</span>` : ''}
               </span>
             </button>
           `;
@@ -325,6 +413,7 @@
       this.unsubscribe = null;
       this.storeRef = null;
       this.routerRef = null;
+      this.bindingsRef = null;
       window.removeEventListener('focus', this.onFocus);
       window.removeEventListener('blur', this.onFocus);
       this.section?.remove();
@@ -334,7 +423,7 @@
     }
   }
 
-  const api = { RecentSectionModule, selectRecentConversations, formatAge, resolveProjectLabel, navigateToConversation };
+  const api = { RecentSectionModule, selectRecentConversations, formatAge, resolveProjectLabel, resolveProjectId, navigateToConversation, startNewProjectConversation };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else ns.__AGY_KIT_RECENT_SECTION__ = RecentSectionModule;
 })(typeof window === 'object' ? window : globalThis);

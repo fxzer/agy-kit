@@ -170,6 +170,15 @@ test('最近任务区块支持 5/10 条切换、折叠、原生路由跳转与�
     });
     assert.deepEqual(navigated, [{ to: '/c/$cascadeId', params: { cascadeId: 'c8' } }]);
 
+    // 点击第二行项目右侧的 "+" 按钮触发该项目下新建对话，且不触发外层会话跳转
+    assert.match(createdSection.innerHTML, /data-recent-project-add="p1"/);
+    assert.match(createdSection.innerHTML, /data-project-action-glyph="add"/);
+    createdSection.listeners.click({
+      stopPropagation() {},
+      target: { closest: sel => sel === '[data-recent-project-add]' ? { dataset: { recentProjectAdd: 'p1' } } : null }
+    });
+    assert.deepEqual(navigated[1], { to: '/', search: { project: 'p1' } });
+
     // 折叠与卸载清理
     createdSection.listeners.click({
       target: { closest: sel => sel === '[data-recent-toggle]' ? {} : null }

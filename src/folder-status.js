@@ -209,21 +209,22 @@
     let f = key ? (listDiv[key] || sidebar[key]) : null;
     let store = null;
     let router = null;
+    let startProjectConversation = null;
     const groupsById = new Map();
     const projectLabels = new Map();
     for (let d = 0; f && d < 32; d++, f = f.return) {
-      if (!groupsById.size) {
-        for (let s = f.memoizedState; s; s = s.next) {
-          const v = s.memoizedState;
-          if (Array.isArray(v) && v.length && v[0]?.conversationIds) {
-            for (const g of v) {
-              if (g?.id) {
-                groupsById.set(g.id, g.conversationIds);
-                if (typeof g.label === 'string') projectLabels.set(g.id, g.label);
-              }
+      for (let s = f.memoizedState; s; s = s.next) {
+        const v = s.memoizedState;
+        if (!groupsById.size && Array.isArray(v) && v.length && v[0]?.conversationIds) {
+          for (const g of v) {
+            if (g?.id) {
+              groupsById.set(g.id, g.conversationIds);
+              if (typeof g.label === 'string') projectLabels.set(g.id, g.label);
             }
-            break;
           }
+        }
+        if (!startProjectConversation && Array.isArray(v) && typeof v[0] === 'function' && String(v[0]).includes('AGENT_MANAGER_NEW_WORKSPACE_CONVERSATION')) {
+          startProjectConversation = v[0];
         }
       }
       if (!store || !router) {
@@ -237,9 +238,9 @@
           }
         }
       }
-      if (store && router && groupsById.size) break;
+      if (store && router && groupsById.size && startProjectConversation) break;
     }
-    return store ? { store, router, groupsById, projectLabels, sidebar } : null;
+    return store ? { store, router, startProjectConversation, groupsById, projectLabels, sidebar } : null;
   }
 
   function conversationIdsForProject(projectId, state, groupsById) {
