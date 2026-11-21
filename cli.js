@@ -177,6 +177,28 @@ switch (action) {
       process.exitCode = 1;
     }
     break;
+  case 'update':
+    require('./src/client-updater').updateClient({
+      force: process.argv.includes('--force') || process.argv.includes('-f')
+    }).catch(err => {
+      console.error('❌ 升级失败:', err.message);
+      process.exit(1);
+    });
+    break;
+  case 'check-update':
+    require('./src/client-updater').checkUpdate().then(check => {
+      console.log(`🔍 客户端当前版本: ${check.currentVersion || '未知'}`);
+      console.log(`🌐 官方最新版本: ${check.latestVersion}`);
+      if (check.hasUpdate) {
+        console.log(`⚡ 发现新版本可用！请完全退出 Antigravity 后运行: node cli.js update`);
+      } else {
+        console.log('✨ 当前已是最新版本。');
+      }
+    }).catch(err => {
+      console.error('❌ 检查更新失败:', err.message);
+      process.exit(1);
+    });
+    break;
   case 'status':
   case 'check':
     checkStatus();
@@ -192,6 +214,8 @@ agy-kit: Next-Gen UI & Telemetry Suite for Google Antigravity 2.x
   live              向当前运行中的 Antigravity 窗口热挂载 agy-kit
   install           持久安装启动钩子（需先退出 Antigravity）
   restore           恢复安装前备份（需先退出 Antigravity）
+  update            无损升级 Antigravity 官方客户端并自动重装补丁（需先退出 Antigravity）
+  check-update      检查官方 Antigravity 是否有新版本发布
   status / check   查看当前客户端环境与插件运行状态
   help             查看帮助
 `);

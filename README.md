@@ -47,7 +47,7 @@ Google Antigravity 2.x（macOS 桌面端）零依赖原生增强套件，集成�
 - **客户端使用统计（Settings → AGY-KIT）**
   - 自动去重聚合本地客户端日志与实时采集用量，展示累计 Token、单日峰值、连续活跃天数、52 周热力图、7/30 天趋势曲线与模型占比环图。
 - **侧边栏与编辑效率增强**
-  - **最近任务（Recent）**：侧边栏顶部按「待处理 > 运行中 > 最近时间」快捷直达会话，支持悬停项目行一键在该项目下新建对话（`+`）、5/10 条切换与折叠。
+  - **最近任务（Recent）**：侧边栏顶部按「待处理 > 运行中 > 最近时间」快捷直达会话，支持标题栏右侧一键新建无项目对话（`+`）、悬停项目行一键在该项目下新建对话（`+`）、5/10 条切换与折叠。
   - **折叠项目角标**：在折叠项目文件夹上聚合显示待授权、运行中与已完成未读状态（跟随客户端系统主题色）。
   - **中文会话标题（源头补丁）**：执行 `node cli.js install` 时对本地 `language_server` 的 626 字节标题系统提示词做等长替换，让新会话首次生成标题即直接输出简体中文（保留专有名词与缩写，0 额外请求、不污染聊天上下文），并纳入备份校验与 `restore` 无损还原。
   - **原地撤回编辑**：可选开启（默认关闭），在消息旁确认后原地展开重编并重发；完全复用客户端原生的撤回与文件还原能力（变更预览、保留/撤回文件开关与附件恢复），插件自身不执行任何文件读写或回滚逻辑。
@@ -56,7 +56,7 @@ Google Antigravity 2.x（macOS 桌面端）零依赖原生增强套件，集成�
 
 ## 环境要求
 
-- macOS + [Antigravity](https://antigravity.google/) 桌面客户端（`/Applications/Antigravity.app`，已适配至 `2.33.0`）
+- macOS + [Antigravity](https://antigravity.google/) 桌面客户端（`/Applications/Antigravity.app`，已适配至 `2.34.0`）
 - Node.js 18+（零第三方依赖，无需 `npm install`）
 
 ## 安装与使用
@@ -85,7 +85,26 @@ node cli.js restore   # 或 npm run restore
 
 > 若 Antigravity 客户端升级覆盖了 `app.asar` 与 `language_server`，完全退出客户端后直接重新执行 `node cli.js install` 即可重新注入（无需先运行 `restore`），历史统计与开关配置不会丢失。
 
-### 3. 状态检查与测试
+### 3. 客户端无损升级（解决官方更新被拦截问题）
+
+> **为什么需要此命令？**
+> 
+> 持久安装在修补 `language_server`（中文标题）和 `app.asar` 时，必须执行 macOS 本地代码重签（`codesign -s -`）。这会覆盖原有的 Google 官方 Developer ID 证书链，导致 macOS 原生自动更新（Squirrel.Mac）在安全校验时报错「`代码未能满足指定的代码要求`」并硬阻断更新（表现为客户端右上角更新按钮变成 Restart 后闪烁消失，无法自动就地升级）。
+
+为彻底解决该死锁，套件提供了官方全自动接管升级方案：
+
+```bash
+# 检查官方是否有新版本发布
+node cli.js check-update   # 或 npm run check-update
+
+# 无损升级客户端并自动重装补丁（操作前需先完全退出 Antigravity）
+node cli.js update         # 或 npm run update
+```
+
+- **全自动流程**：检测官方最新清单 → 优先复用本地已下载的官方安装包（免重复下载）或从官方源拉取原版 → 自动原子解压覆盖更新 → 自动重新应用中文标题与 UI 补丁并建立新版本基线备份。
+- **强制重装**：若客户端被异常篡改需要强制拉取官方原版覆盖并重装，可追加 `--force`（`node cli.js update --force`）。
+
+### 4. 状态检查与测试
 
 ```bash
 node cli.js status    # 查看宿主路径、调试端口、持久安装与中文标题补丁状态
@@ -96,10 +115,11 @@ npm test              # 运行单元测试
 
 ```text
 agy-kit/
-├── cli.js                    # CLI 入口（live / install / restore / status）
+├── cli.js                    # CLI 入口（live / install / restore / update / status）
 ├── package.json
 ├── assets/                   # README 效果展示截图
 ├── src/
+│   ├── client-updater.js     # 官方版本检查、下载与无损自动升级接管
 │   ├── payload.js            # 底部胶囊、HUD 浮层与整体挂载调度
 │   ├── telemetry.js          # RPC 遥测、配额解析与增量步骤采集
 │   ├── session-insights.js   # 速度估算、双阈值压缩识别、Treemap 布局与异常分类

@@ -21,6 +21,8 @@
     "install-kit": "node cli.js install",
     "live": "node cli.js live",
     "status": "node cli.js status",
-    "restore": "node cli.js restore"
+    "restore": "node cli.js restore",
+    "update": "node cli.js update",
+    "check-update": "node cli.js check-update"
   }
 }
