@@ -360,10 +360,13 @@
 
       this.renderHUDContent();
       const now = Date.now();
-      if (now - this.lastHudPollAt > 10000) {
+      if (now - this.lastHudPollAt > 5000) {
         this.lastHudPollAt = now;
         this.pollTelemetry({ forceQuota: true, refreshQuota: true }).then(() => {
-          if (this.mounted && this.hudOpen) this.updateView();
+          if (this.mounted && this.hudOpen) {
+            this.updateView();
+            this.renderHUDContent();
+          }
         });
       }
     }
@@ -422,22 +425,24 @@
           <div class="flex justify-between items-center text-xs gap-2">
             <span class="text-muted-foreground font-medium">上下文构成 · 估算</span>
             <span class="font-mono text-foreground font-medium tabular-nums shrink-0" title="${sourceTip}">
-              ${(breakdownSum / 1000).toFixed(1)}K${hasBudget ? ` / ${(budget / 1000).toFixed(0)}K <span class="text-muted-foreground font-normal">(${percent}%)</span>` : ' · 预算未上报'}
+              ${(breakdownSum / 1000).toFixed(1)}K${hasBudget ? ` / ${(budget / 1000).toFixed(0)}K <span class="text-muted-foreground font-normal">(${percent}%)</span>` : (this.telemetry.compositionReady || hasUsage ? ' · 预算未上报' : '')}
             </span>
           </div>
-          <div class="text-muted-foreground/70" style="font-size:0.625rem">${this.telemetry.source === '最近一轮实际用量' ? '最近一轮实际用量（含输出）' : '宿主上下文估算'}：${hasUsage ? `${(totalUsed / 1000).toFixed(1)}K` : '未上报'}</div>
+          ${this.telemetry.compositionReady || hasUsage ? `<div class="text-muted-foreground/70" style="font-size:0.625rem">${this.telemetry.source === '最近一轮实际用量' ? '最近一轮实际用量（含输出）' : '宿主上下文估算'}：${hasUsage ? `${(totalUsed / 1000).toFixed(1)}K` : '未上报'}</div>` : ''}
 
           <!-- 五色上下文堆叠条 + 右侧 15% 斜纹压缩缓冲带 -->
-          <div style="position:relative;height:9px;display:${hasBudget ? 'flex' : 'none'};background:var(--secondary,rgba(120,120,128,.2));border-radius:5px;overflow:hidden" class="w-full overflow-hidden flex relative" title="估算分类占宿主上下文预算的比例">
+          <div style="position:relative;height:9px;display:${this.telemetry.compositionReady && !hasBudget ? 'none' : 'flex'};background:var(--secondary,rgba(120,120,128,.2));border-radius:5px;overflow:hidden" class="w-full overflow-hidden flex relative" title="估算分类占宿主上下文预算的比例">
+            ${this.telemetry.compositionReady ? `
             <div style="width: ${pSys}%; background: ${categoryColors.system}; height: 9px; flex-shrink: 0;" class="transition-all" title="系统规则: ${c.system} (${pSys}%)"></div>
             <div style="width: ${pTools}%; background: ${categoryColors.tools}; height: 9px; flex-shrink: 0;" class="transition-all" title="工具定义: ${c.tools} (${pTools}%)"></div>
             <div style="width: ${pUser}%; background: ${categoryColors.user}; height: 9px; flex-shrink: 0;" class="transition-all" title="用户消息: ${c.user} (${pUser}%)"></div>
             <div style="width: ${pResp}%; background: ${categoryColors.response}; height: 9px; flex-shrink: 0;" class="transition-all" title="思考+回复: ${c.response} (${pResp}%)"></div>
-            <div style="width: ${pResults}%; background: ${categoryColors.results}; height: 9px; flex-shrink: 0;" class="transition-all" title="工具结果: ${c.toolResults} (${pResults}%)"></div>
+            <div style="width: ${pResults}%; background: ${categoryColors.results}; height: 9px; flex-shrink: 0;" class="transition-all" title="工具结果: ${c.toolResults} (${pResults}%)"></div>` : ''}
             <!-- 85% 到 100% 斜纹参考缓冲带 -->
             <div style="position:absolute;top:0;bottom:0;left:85%;right:0;background:repeating-linear-gradient(45deg,rgba(245,158,11,.22) 0 4px,transparent 4px 8px);border-left:1.5px solid rgba(245,158,11,.75);z-index:10;pointer-events:auto" title="85% 上下文参考缓冲带，不代表宿主强制压缩阈值"></div>
           </div>
 
+          ${this.telemetry.compositionReady ? `
           <!-- 五色细项清单 + 缓存命中率（3×2 网格对齐） -->
           <div class="grid grid-cols-3 gap-y-1.5 gap-x-2 pt-1 text-muted-foreground font-mono" style="font-size:0.625rem">
             <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-[2px] shrink-0" style="background:${categoryColors.system}"></span>系统: ${(c.system / 1000).toFixed(1)}k</span>
@@ -446,11 +451,11 @@
             <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-[2px] shrink-0" style="background:${categoryColors.response}"></span>思考+回复: ${(c.response / 1000).toFixed(1)}k</span>
             <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-[2px] shrink-0" style="background:${categoryColors.results}"></span>结果: ${(c.toolResults / 1000).toFixed(1)}k</span>
             <span class="flex items-center gap-1.5 font-medium whitespace-nowrap" style="color:var(--success, #10b981)" title="Prompt 缓存命中率"><span class="w-2 h-2 rounded-full shrink-0" style="background:var(--success, #10b981)"></span>缓存命中: ${c.cacheHitRatio}</span>
-          </div>
+          </div>` : ''}
         </div>
 
         <!-- 模型配额池：三栏 Bento 同心双圆环仪表卡 (60px 大圆环 + 居中标头) -->
-        <div data-agy-module="quotaPool" class="py-2.5 border-b border-border/40">
+        <div data-agy-module="quotaPool" class="pt-2.5 pb-3.5 border-b border-border/40">
           ${this.telemetry.quota.groups?.length ? (() => {
             const esc = v => String(v ?? '').replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
             const shortName = n => /argon/i.test(n) ? 'Argon' : /claude|gpt/i.test(n) ? 'Claude/GPT' : /gemini/i.test(n) ? 'Gemini' : n;
@@ -541,9 +546,9 @@
           </div>`}
         </div>
 
-        ${this.telemetry.error ? `<p class="text-rose-500">${this.telemetry.error.replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`)}</p>` : ''}
-        ${this.telemetry.archiveError ? '<p class="text-xs text-muted-foreground">用量归档暂不可用，稍后自动重试。</p>' : ''}
-        ${this.telemetry.compression ? `<p>已压缩：${(this.telemetry.compression.before/1000).toFixed(1)}K → ${(this.telemetry.compression.after/1000).toFixed(1)}K，释放 ${(this.telemetry.compression.released/1000).toFixed(1)}K</p>` : ''}
+        ${this.telemetry.error && this.telemetry.error !== '配额耗尽' ? `<p class="text-rose-500 pt-2 pb-1 text-xs font-medium">${this.telemetry.error.replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`)}</p>` : ''}
+        ${this.telemetry.archiveError ? '<p class="text-xs text-muted-foreground pt-1.5 pb-0.5">用量归档暂不可用，稍后自动重试。</p>' : ''}
+        ${this.telemetry.compression ? `<p class="pt-1.5 pb-0.5">已压缩：${(this.telemetry.compression.before/1000).toFixed(1)}K → ${(this.telemetry.compression.after/1000).toFixed(1)}K，释放 ${(this.telemetry.compression.released/1000).toFixed(1)}K</p>` : ''}
         ${this.telemetry.sources?.length ? (() => {
           const esc = v => String(v ?? '').replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
           const items = this.telemetry.sources;
@@ -554,7 +559,7 @@
           const W = 340, H = 118;
           const laid = insightsApi?.squarify ? insightsApi.squarify(blocks, W, H) : [];
           return `
-            <details class="border-b border-border/40 pb-1">
+            <details class="border-b border-border/40 pb-2">
               <summary class="cursor-pointer py-2 text-xs text-muted-foreground hover:text-foreground transition-colors">上下文占用分布（Top ${items.length} 占 ${topShare}%）</summary>
               <div class="pb-2 pt-1">
                 <!-- 纯净磁盘占用矩形树图 (Treemap 无下方冗余列表，悬停即看完整明细) -->
@@ -566,12 +571,15 @@
                     const tokLabel = item.tokens >= 1000 ? `${(item.tokens / 1000).toFixed(1)}K` : `${item.tokens}`;
                     const bg = isOther ? 'var(--secondary, rgba(120,120,128,0.16))' : `color-mix(in srgb, ${color} 22%, transparent)`;
                     const bd = isOther ? 'var(--border, rgba(120,120,128,0.42))' : `color-mix(in srgb, ${color} 52%, transparent)`;
-                    const showTitle = rect.w >= 42 && rect.h >= 18;
-                    const showNum = rect.w >= 50 && rect.h >= 30;
+                    const showTitle = (rect.w >= 22 && rect.h >= 24) || (rect.w >= 60 && rect.h >= 14);
+                    const showNum = rect.w >= 20 && rect.h >= 14;
+                    const numText = rect.w >= 52 && rect.h >= 26 ? `${tokLabel} · ${pct}%` : `${pct}%`;
+                    const pad = rect.w < 48 ? '2px 3px' : '3px 5px';
+                    const gap = rect.h < 34 ? '1px' : '2px';
                     const tip = `${item.name}${!isOther && item.count > 1 ? ` ×${item.count}` : ''}：${item.tokens.toLocaleString()} tok (${pct}%)`;
-                    return `<div title="${esc(tip)}" style="position:absolute;left:${(rect.x / W * 100).toFixed(2)}%;top:${(rect.y / H * 100).toFixed(2)}%;width:calc(${(rect.w / W * 100).toFixed(2)}% - 2px);height:calc(${(rect.h / H * 100).toFixed(2)}% - 2px);background:${bg};border:1px solid ${bd};border-radius:4px;padding:3px 5px;box-sizing:border-box;overflow:hidden;display:flex;flex-direction:column;justify-content:center;gap:3px">
-                      ${showTitle ? `<span class="truncate font-medium ${isOther ? 'text-muted-foreground' : 'text-foreground'}" style="font-size:0.625rem;line-height:1.15;letter-spacing:-0.2px">${esc(item.name)}${!isOther && item.count > 1 ? ` <span class="opacity-60 font-normal">×${item.count}</span>` : ''}</span>` : ''}
-                      ${showNum ? `<span class="truncate font-mono tabular-nums text-muted-foreground" style="font-size:0.5625rem;line-height:1.1;letter-spacing:-0.3px">${tokLabel} · ${pct}%</span>` : ''}
+                    return `<div title="${esc(tip)}" style="position:absolute;left:${(rect.x / W * 100).toFixed(2)}%;top:${(rect.y / H * 100).toFixed(2)}%;width:calc(${(rect.w / W * 100).toFixed(2)}% - 2px);height:calc(${(rect.h / H * 100).toFixed(2)}% - 2px);background:${bg};border:1px solid ${bd};border-radius:4px;padding:${pad};box-sizing:border-box;overflow:hidden;display:flex;flex-direction:column;justify-content:center;gap:${gap}">
+                      ${showTitle ? `<span class="truncate font-medium ${isOther ? 'text-muted-foreground' : 'text-foreground'}" style="font-size:0.625rem;line-height:1.15;letter-spacing:-0.2px">${esc(item.name)}${!isOther && item.count > 1 && rect.w >= 44 ? ` <span class="opacity-60 font-normal">×${item.count}</span>` : ''}</span>` : ''}
+                      ${showNum ? `<span class="truncate font-mono tabular-nums text-muted-foreground" style="font-size:0.5625rem;line-height:1.1;letter-spacing:-0.3px">${numText}</span>` : ''}
                     </div>`;
                   }).join('')}
                 </div>
@@ -591,10 +599,6 @@
       hud.querySelectorAll('[data-agy-module]').forEach(section => {
         section.hidden = !store.config.modules[section.dataset.agyModule];
       });
-      const compositionSection = hud.querySelector('[data-agy-module="contextDetailed"]');
-      if (compositionSection && !this.telemetry.compositionReady) {
-        compositionSection.textContent = '尚无上下文分类快照';
-      }
       const quotaSection = hud.querySelector('[data-agy-module="quotaPool"]');
       if (quotaSection && !this.telemetry.quotaReady) {
         quotaSection.textContent = '当前模型未上报配额';

@@ -15,6 +15,7 @@
       showMore: n => `Show more (${n})`,
       showLess: 'Show less',
       justNow: 'now',
+      newConversation: 'New Conversation',
       newInProject: name => name ? `New conversation in ${name}` : 'New conversation in project'
     },
     zh: {
@@ -23,6 +24,7 @@
       showMore: n => `显示更多 (${n})`,
       showLess: '收起至 5 条',
       justNow: '刚刚',
+      newConversation: '新建无项目对话',
       newInProject: name => name ? `在 ${name} 中新建对话` : '在此项目中新建对话'
     }
   };
@@ -71,6 +73,31 @@
     .agy-recent-toggle[aria-expanded="false"] .agy-recent-chevron {
       transform: rotate(0deg);
       opacity: 0.85;
+    }
+    .agy-recent-new-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      border: 0;
+      border-radius: 6px;
+      color: var(--muted-foreground);
+      background: transparent;
+      flex-shrink: 0;
+      cursor: pointer;
+      outline: none;
+      transition: background-color 0.12s ease, color 0.12s ease;
+    }
+    .agy-recent-new-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+    .agy-recent-new-btn:hover,
+    .agy-recent-new-btn:focus-visible {
+      color: var(--foreground);
+      background-color: var(--sidebar-secondary, rgba(120, 120, 128, 0.18));
     }
     .agy-recent-list {
       display: flex;
@@ -224,7 +251,9 @@
     if (store && typeof store.dispatch === 'function') {
       try {
         store.dispatch({ type: 'newConvoResourceSelector/setPseudoProjectSelected', payload: false });
-        store.dispatch({ type: 'newConvoResourceSelector/setLastSelectedProject', payload: projectId });
+        if (projectId !== 'outside-of-project') {
+          store.dispatch({ type: 'newConvoResourceSelector/setLastSelectedProject', payload: projectId });
+        }
       } catch {}
     }
     const router = bindings?.router || (typeof bindings?.navigate === 'function' ? bindings : null);
@@ -303,6 +332,13 @@
         if (more) {
           this.limit = this.limit === 5 ? 10 : 5;
           this.sync();
+          return;
+        }
+        const newConvo = e.target.closest?.('[data-recent-new-convo]');
+        if (newConvo) {
+          e.stopPropagation?.();
+          startNewProjectConversation('outside-of-project', this.bindingsRef || { router: this.routerRef, store: this.storeRef });
+          this.scheduleSync();
           return;
         }
         const addProject = e.target.closest?.('[data-recent-project-add]');
@@ -395,6 +431,9 @@
               <span class="truncate">${t.title}</span>${CHEVRON_SVG}
             </button>
           </h2>
+          <div class="flex items-center justify-end gap-1 shrink-0 -my-1">
+            <button type="button" class="agy-recent-new-btn" data-recent-new-convo title="${esc(t.newConversation)}" aria-label="${esc(t.newConversation)}">${ADD_SVG}</button>
+          </div>
         </div>
         ${rowsHtml}
       `;

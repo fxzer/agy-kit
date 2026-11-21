@@ -241,7 +241,7 @@
         try {
           const [u, summary] = await Promise.all([
             rpc('GetUserStatus', {}),
-            rpc('RetrieveUserQuotaSummary', {}).catch(() => null)
+            rpc('RetrieveUserQuotaSummary', { forceRefresh: true }).catch(() => null)
           ]);
           quotaState.configs = u.userStatus?.cascadeModelConfigData?.clientModelConfigs || [];
           const groups = summary?.response?.groups || summary?.groups;
@@ -271,7 +271,14 @@
           Object.assign(target, empty());
         }
         if (stopped) return;
-        if (busy) { target.retryAt ||= Date.now() + 250; return; }
+        if (busy) {
+          if (modules.quotaPool && pollOptions.refreshQuota !== false) {
+            await refreshQuota(forceQuota);
+            if (!stopped && activeId === id) this.reanalyze(target, modules, selectedModel);
+          }
+          target.retryAt ||= Date.now() + 250;
+          return;
+        }
         if (!id && !modules.quotaPool) return;
         busy = true;
         controller = new AbortController();

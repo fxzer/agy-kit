@@ -6,8 +6,9 @@ const telemetryApi = require('../src/telemetry');
 
 function capsule() {
   const source = fs.readFileSync(require.resolve('../src/payload'), 'utf8');
-  const context = vm.createContext({ paneSerial: 0, telemetryApi, Date,
-    store: { config: { modules: { history: true, contextDetailed: true, quotaPool: false } } },
+  const insightsApi = require('../src/session-insights');
+  const context = vm.createContext({ paneSerial: 0, telemetryApi, insightsApi, Date,
+    store: { config: { modules: { history: true, contextDetailed: true, quotaPool: true } } },
     document: { hidden: false } });
   vm.runInContext(source.slice(source.indexOf('  class CapsuleModule'), source.indexOf('  class AgKitApp')) + '\nthis.CapsuleModule = CapsuleModule;', context);
   const instance = new context.CapsuleModule(null);
@@ -79,4 +80,42 @@ test('配额显示为 0% 时不渲染 SVG 进度弧，消除 round linecap 红�
   assert.equal(progressCircles.length, 1);
   assert.match(progressCircles[0][0], /r="17"/);
   assert.match(progressCircles[0][0], /stroke="#017ACC"/);
+});
+test('无上下文分类快照时展示空进度条且隐藏下方六项细分指标', () => {
+  const c = capsule();
+  c.telemetry.compositionReady = false;
+  c.renderHUDContent();
+  assert.doesNotMatch(c.hud.innerHTML, /尚无上下文分类快照/);
+  assert.match(c.hud.innerHTML, /上下文构成 · 估算/);
+  assert.match(c.hud.innerHTML, /height:9px;display:flex;background:var\(--secondary/);
+  assert.doesNotMatch(c.hud.innerHTML, /缓存命中:/);
+  assert.doesNotMatch(c.hud.innerHTML, /思考\+回复:/);
+});
+test('配额池开启时配额耗尽不重复渲染冗余文字，保留圆环纯粹性', () => {
+  const c = capsule();
+  c.telemetry.error = '配额耗尽';
+  c.renderHUDContent();
+  assert.doesNotMatch(c.hud.innerHTML, /配额耗尽/);
+
+  c.telemetry.error = '上下文超限';
+  c.renderHUDContent();
+  assert.match(c.hud.innerHTML, /上下文超限/);
+  assert.match(c.hud.innerHTML, /class="text-rose-500 pt-2 pb-1 text-xs font-medium"/);
+});
+test('Treemap 狭窄方块自适应降级保留百分比与标题，消除纯色空白块', () => {
+  const c = capsule();
+  c.telemetry.sources = [
+    { name: '助手回复', tokens: 3000, category: 'response', count: 1 },
+    { name: '读取代码', tokens: 1000, category: 'results', count: 1 },
+    { name: '系统规则', tokens: 800, category: 'system', count: 1 },
+    { name: '用户消息', tokens: 600, category: 'user', count: 1 },
+    { name: '终端输出', tokens: 400, category: 'results', count: 1 }
+  ];
+  c.telemetry.sourcesOther = { name: '其余 10 项', tokens: 4200, category: 'other', count: 10 };
+  c.renderHUDContent();
+  // 所有小块必须都包含百分比标记 %
+  const pctCount = (c.hud.innerHTML.match(/%\s*<\/span>/g) || []).length;
+  assert.equal(pctCount, 6);
+  // 小块即使放不下完整 Token 标注，也至少保留纯百分比
+  assert.match(c.hud.innerHTML, /class="truncate font-mono tabular-nums text-muted-foreground"[^>]*>\d+\.\d+%<\/span>/);
 });

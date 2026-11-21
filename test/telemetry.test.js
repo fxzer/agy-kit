@@ -99,11 +99,13 @@ test('跨天倒计时换算为天和小时，小时内保留小时和分钟', ()
 test('新对话无 sessionId 且开启 quotaPool 时也能同步更新配额', async () => {
   const originalFetch = global.fetch, originalLocation = global.location;
   global.location = { pathname: '/' };
-  global.fetch = async (url) => {
+  let summaryBody = null;
+  global.fetch = async (url, opts) => {
     if (url.includes('GetUserStatus')) {
       return { ok: true, json: async () => ({ userStatus: { cascadeModelConfigData: { clientModelConfigs: [{ label: 'Orchestrator (Argon)' }] } } }) };
     }
     if (url.includes('RetrieveUserQuotaSummary')) {
+      summaryBody = JSON.parse(opts?.body || '{}');
       return { ok: true, json: async () => ({ response: { groups: [{ displayName: 'Gemini 4 Argon', buckets: [{ window: 'weekly', remainingFraction: 0.69, resetTime: Date.now() + 3 * 24 * 3600000 }] }] } }) };
     }
     throw new Error('unexpected rpc: ' + url);
@@ -111,6 +113,7 @@ test('新对话无 sessionId 且开启 quotaPool 时也能同步更新配额', a
   try {
     const collector = create({ quotaState: createQuotaState() }), target = {};
     await collector.poll(target, { quotaPool: true, contextDetailed: true }, null, 'Orchestrator (Argon)', true);
+    assert.deepEqual(summaryBody, { forceRefresh: true });
     assert.equal(target.quotaReady, true);
     assert.equal(target.quota.percent, 69);
     assert.equal(target.quota.windowLabel, '周限额');
