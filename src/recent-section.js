@@ -5,8 +5,7 @@
   const shared = typeof module === 'object' && module.exports
     ? require('./folder-status')
     : (ns.__AGY_KIT_SIDEBAR_API__ || {});
-  const { classifyConversation, renderBadgeIcon, secondsOf, findSidebarBindings, isZhHost } = shared;
-  const IGNORED_TYPES = new Set([21, 22, 23]);
+  const { isHiddenConversation, classifyConversation, renderBadgeIcon, secondsOf, findSidebarBindings, isZhHost } = shared;
 
   const COPY = {
     en: {
@@ -192,10 +191,7 @@
     const summaries = state?.trajectorySummaries?.summaries || {};
     const list = [];
     for (const [id, summary] of Object.entries(summaries)) {
-      if (!summary || summary.annotations?.archived) continue;
-      if (summary.trajectoryMetadata?.parentConversationId) continue;
-      if (summary.trajectoryMetadata?.isBattleModeFork) continue;
-      if (IGNORED_TYPES.has(summary.trajectoryType)) continue;
+      if (isHiddenConversation(id, summary)) continue;
       const title = summary.annotations?.title || summary.summary;
       if (!title) continue;
       const updatedAt = Math.max(secondsOf(summary.lastModifiedTime), secondsOf(summary.createdTime));

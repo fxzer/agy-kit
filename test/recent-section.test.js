@@ -38,6 +38,18 @@ test('按待处理 > 运行中 > 其余最近时间倒序排列，并过滤归�
     trajectoryType: 22,
     annotations: { title: '侧问' }
   };
+  summaries.workflow_hidden = {
+    status: 1,
+    lastModifiedTime: { seconds: 9999 },
+    summary: 'You are reviewing commit abc',
+    trajectoryMetadata: { projectId: 'p1', rootConversationId: 'idle_1', sourceMetadata: { hideFromConversationList: true } }
+  };
+  summaries.derived_root = {
+    status: 1,
+    lastModifiedTime: { seconds: 9999 },
+    summary: 'Derived workflow child',
+    trajectoryMetadata: { projectId: 'p1', rootConversationId: 'idle_1' }
+  };
 
   const state = { conversation: { localLastViewedTimes: {} }, trajectorySummaries: { summaries } };
   const projectLabels = new Map([['p1', 'agy-kit']]);

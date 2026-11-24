@@ -62,12 +62,20 @@
     return 'bell';
   }
 
+  function isHiddenConversation(id, summary) {
+    if (!id || !summary) return true;
+    if (summary.annotations?.archived) return true;
+    const meta = summary.trajectoryMetadata;
+    if (meta?.parentConversationId) return true;
+    if (meta?.isBattleModeFork) return true;
+    if (meta?.sourceMetadata?.hideFromConversationList) return true;
+    if (meta?.rootConversationId && meta.rootConversationId !== id && !summary.forkParentConversationId) return true;
+    if (IGNORED_TRAJECTORY_TYPES.has(summary.trajectoryType)) return true;
+    return false;
+  }
+
   function classifyConversation(id, summary, state, activeCascadeId, hasFocus = true) {
-    if (!id || !summary) return null;
-    if (summary.annotations?.archived) return null;
-    if (summary.trajectoryMetadata?.parentConversationId) return null;
-    if (summary.trajectoryMetadata?.isBattleModeFork) return null;
-    if (IGNORED_TRAJECTORY_TYPES.has(summary.trajectoryType)) return null;
+    if (isHiddenConversation(id, summary)) return null;
 
     const summaries = state?.trajectorySummaries?.summaries || {};
     const indexes = state?.trajectorySummaries?.indexes;
@@ -381,7 +389,7 @@
     }
   }
 
-  const api = { FolderStatusModule, classifyConversation, aggregateProject, conversationIdsForProject, renderBadgeIcon, secondsOf, findSidebarBindings, isZhHost };
+  const api = { FolderStatusModule, isHiddenConversation, classifyConversation, aggregateProject, conversationIdsForProject, renderBadgeIcon, secondsOf, findSidebarBindings, isZhHost };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else {
     ns.__AGY_KIT_FOLDER_STATUS__ = FolderStatusModule;

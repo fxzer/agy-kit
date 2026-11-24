@@ -17,7 +17,32 @@ test('准确分类等待授权、运行中、后台运行与已完成未读状�
         c_unread: { status: 1, notFullyIdle: false, lastModifiedTime: { seconds: 150 }, annotations: { title: '已完成任务' } },
         c_read: { status: 1, notFullyIdle: false, lastModifiedTime: { seconds: 150 }, annotations: { title: '已读任务' } },
         c_archived: { status: 1, lastModifiedTime: { seconds: 999 }, annotations: { archived: true } },
-        c_side: { status: 1, lastModifiedTime: { seconds: 999 }, trajectoryType: 22 }
+        c_side: { status: 1, lastModifiedTime: { seconds: 999 }, trajectoryType: 22 },
+        c_workflow_hidden: {
+          status: 1,
+          lastModifiedTime: { seconds: 999 },
+          summary: 'You are reviewing commit abc',
+          trajectoryMetadata: { rootConversationId: 'c_parent', sourceMetadata: { hideFromConversationList: true } }
+        },
+        c_derived_root: {
+          status: 1,
+          lastModifiedTime: { seconds: 999 },
+          summary: 'Derived child without parentConversationId',
+          trajectoryMetadata: { rootConversationId: 'c_parent' }
+        },
+        c_sidecar_visible: {
+          status: 1,
+          lastModifiedTime: { seconds: 150 },
+          annotations: { title: '自动化顶层任务' },
+          trajectoryMetadata: { rootConversationId: 'c_sidecar_visible', sourceMetadata: { hideFromConversationList: false } }
+        },
+        c_user_fork: {
+          status: 1,
+          lastModifiedTime: { seconds: 150 },
+          forkParentConversationId: 'c_parent',
+          annotations: { title: '用户 Fork 会话' },
+          trajectoryMetadata: { rootConversationId: 'c_parent', sourceMetadata: { hideFromConversationList: false } }
+        }
       },
       indexes: { byParent: { c_parent: ['c_child'] } }
     }
@@ -29,12 +54,16 @@ test('准确分类等待授权、运行中、后台运行与已完成未读状�
   assert.deepEqual(classifyConversation('c_run', sums.c_run, state, null), { kind: 'running', subkind: 'loading', title: '生成中' });
   assert.deepEqual(classifyConversation('c_bg', sums.c_bg, state, null), { kind: 'running', subkind: 'background', title: '后台任务' });
   assert.deepEqual(classifyConversation('c_unread', sums.c_unread, state, null), { kind: 'unread', subkind: 'dot', title: '已完成任务' });
+  assert.deepEqual(classifyConversation('c_sidecar_visible', sums.c_sidecar_visible, state, null), { kind: 'unread', subkind: 'dot', title: '自动化顶层任务' });
+  assert.deepEqual(classifyConversation('c_user_fork', sums.c_user_fork, state, null), { kind: 'unread', subkind: 'dot', title: '用户 Fork 会话' });
   // 当前正在聚焦打开的会话不显示未读蓝点
   assert.equal(classifyConversation('c_unread', sums.c_unread, state, 'c_unread', true), null);
   assert.equal(classifyConversation('c_read', sums.c_read, state, null), null);
   assert.equal(classifyConversation('c_archived', sums.c_archived, state, null), null);
   assert.equal(classifyConversation('c_side', sums.c_side, state, null), null);
   assert.equal(classifyConversation('c_child', sums.c_child, state, null), null);
+  assert.equal(classifyConversation('c_workflow_hidden', sums.c_workflow_hidden, state, null), null);
+  assert.equal(classifyConversation('c_derived_root', sums.c_derived_root, state, null), null);
 });
 
 test('方案 A 聚合规则：最多并排展示前 2 类状态，完整明细写入 tooltipText', () => {
