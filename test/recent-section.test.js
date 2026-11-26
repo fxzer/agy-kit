@@ -1,7 +1,7 @@
 'use strict';
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { RecentSectionModule, selectRecentConversations, formatAge } = require('../src/recent-section');
+const { RecentSectionModule, selectRecentConversations, formatAge, resolveSidebarHost } = require('../src/recent-section');
 
 test('按待处理 > 运行中 > 其余最近时间倒序排列，并过滤归档与子智能体', () => {
   const summaries = {};
@@ -212,5 +212,151 @@ test('最近任务区块支持 5/10 条切换、折叠、原生路由跳转与�
   } finally {
     global.document = prevDoc;
     global.window = prevWin;
+  }
+});
+
+function makeStyleMock() {
+  const map = new Map();
+  return {
+    marginBottom: '',
+    setProperty(k, v, p) { map.set(k, p ? `${v} !${p}` : v); },
+    removeProperty(k) { map.delete(k); },
+    get(k) { return map.get(k); }
+  };
+}
+
+test('Antigravity 2.35+ 多层 block 包装下，将区块挂载到外层纵向 Flex 容器而非破坏内层 wrapper 高度', () => {
+  const prevDoc = global.document, prevWin = global.window, prevGcs = global.getComputedStyle;
+  const summaries = {};
+  for (let i = 1; i <= 6; i++) {
+    summaries[`c${i}`] = {
+      status: 1,
+      lastModifiedTime: { seconds: 1000 + i },
+      annotations: { title: `会话${i}` },
+      trajectoryMetadata: { projectId: 'p1' }
+    };
+  }
+  const state = { conversation: { localLastViewedTimes: {} }, trajectorySummaries: { summaries } };
+  const store = { getState: () => state, subscribe: () => () => {} };
+  const router = { navigate() {}, buildLocation() {} };
+
+  const shellChildren = [];
+  const scrollShell = {
+    children: shellChildren,
+    insertBefore(el, ref) {
+      el.parentElement = scrollShell;
+      el.isConnected = true;
+      const idx = shellChildren.indexOf(ref);
+      if (idx >= 0) shellChildren.splice(idx, 0, el);
+      else shellChildren.push(el);
+    }
+  };
+  const sidebarBounds = { parentElement: scrollShell, className: 'w-full relative flex-1 min-h-0 h-full', style: makeStyleMock() };
+  shellChildren.push(sidebarBounds);
+  const innerWrapper = { parentElement: sidebarBounds, className: 'relative h-full w-full', style: makeStyleMock() };
+  const sidebar = {
+    parentElement: innerWrapper,
+    className: 'relative w-full h-full overflow-y-auto overscroll-none outline-none px-2',
+    hasAttribute: attr => attr === 'data-sidebar-scroll-container',
+    firstElementChild: {
+      __reactFiber$1: {
+        memoizedState: { memoizedState: [{ id: 'p1', label: 'agy-kit', conversationIds: Object.keys(summaries) }] },
+        dependencies: { firstContext: { memoizedValue: { store, navigate: router.navigate, buildLocation: router.buildLocation } } },
+        return: null
+      }
+    }
+  };
+
+  let createdSection = null;
+  global.getComputedStyle = el => {
+    if (el === scrollShell) return { display: 'flex', flexDirection: 'column', rowGap: '16px' };
+    if (el === sidebar) return { display: 'block', overflowY: 'auto' };
+    return { display: 'block', flexDirection: 'row', rowGap: '0px', overflowY: 'visible' };
+  };
+  global.document = {
+    body: {},
+    documentElement: { lang: 'zh-CN' },
+    head: { appendChild() {} },
+    createElement: tag => {
+      if (tag === 'style') return { remove() {} };
+      const el = {
+        tagName: tag.toUpperCase(),
+        isConnected: false,
+        parentElement: null,
+        style: makeStyleMock(),
+        innerHTML: '',
+        setAttribute() {},
+        addEventListener() {},
+        remove() {
+          el.isConnected = false;
+          const i = shellChildren.indexOf(el);
+          if (i >= 0) shellChildren.splice(i, 1);
+        }
+      };
+      createdSection = el;
+      return el;
+    },
+    querySelector: sel => sel === '[data-testid="conversation-list-sidebar"]' ? sidebar : null,
+    hasFocus: () => true
+  };
+  global.window = { addEventListener() {}, removeEventListener() {} };
+
+  try {
+    const resolved = resolveSidebarHost(sidebar);
+    assert.equal(resolved.host, scrollShell);
+    assert.equal(resolved.slot, sidebarBounds);
+    assert.equal(resolved.isBoundedSlot, true);
+
+    const mod = new RecentSectionModule();
+    mod.mount();
+
+    // 插入到 scrollShell 位于 sidebarBounds 之前，而非插入进 display:block 的 sidebarBounds
+    assert.equal(shellChildren[0], createdSection);
+    assert.equal(shellChildren[1], sidebarBounds);
+    assert.equal(createdSection.style.marginBottom, '-8px');
+
+    // 内层 wrapper 保持原生 h-full，不被错误设为 height: auto !important
+    assert.equal(innerWrapper.style.get('height'), undefined);
+    // 外层弹性槽位 sidebarBounds 获得受限弹性高度
+    assert.equal(sidebarBounds.style.get('height'), 'auto !important');
+    assert.equal(sidebarBounds.style.get('flex'), '1 1 0% !important');
+
+    // 卸载时自动还原内联样式并移出 DOM
+    mod.unmount();
+    assert.equal(shellChildren.length, 1);
+    assert.equal(sidebarBounds.style.get('height'), undefined);
+    assert.equal(sidebarBounds.style.get('flex'), undefined);
+    assert.equal(sidebarBounds.style.get('min-height'), undefined);
+  } finally {
+    global.document = prevDoc;
+    global.window = prevWin;
+    global.getComputedStyle = prevGcs;
+  }
+});
+
+test('移动端首页等非独立滚动场景下不强行覆盖 slot 的弹性尺寸，且 gap 为 0 时无负外边距重叠', () => {
+  const prevDoc = global.document, prevGcs = global.getComputedStyle;
+  const scrollShell = { parentElement: null };
+  const mobileSlot = { parentElement: scrollShell, className: 'shrink-0', style: makeStyleMock() };
+  const sidebarBounds = { parentElement: mobileSlot, className: 'w-full relative' };
+  const sidebar = {
+    parentElement: sidebarBounds,
+    className: 'relative w-full px-2',
+    hasAttribute: () => false
+  };
+  global.document = { body: {}, documentElement: {} };
+  global.getComputedStyle = el => {
+    if (el === scrollShell) return { display: 'flex', flexDirection: 'column', rowGap: '0px' };
+    return { display: 'block', overflowY: 'visible', rowGap: '0px' };
+  };
+  try {
+    const resolved = resolveSidebarHost(sidebar);
+    assert.equal(resolved.host, scrollShell);
+    assert.equal(resolved.slot, mobileSlot);
+    assert.equal(resolved.isBoundedSlot, false);
+    assert.equal(resolved.rowGap, 0);
+  } finally {
+    global.document = prevDoc;
+    global.getComputedStyle = prevGcs;
   }
 });
